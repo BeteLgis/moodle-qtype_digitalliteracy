@@ -6,24 +6,47 @@ class qtype_digitalliteracy_renderer extends qtype_renderer {
         $question = $qa->get_question();
 
         $files = '';
-        if ($question->attachments) {
+        if ($question->attachmentsrequired) {
             if (empty($options->readonly)) {
-                $files = $this->files_input($qa, $question->attachments, $options);
+                $files = $this->files_input($qa, $question->attachmentsrequired, $options);
 
             } else {
                 $files = $this->files_read_only($qa, $options);
             }
         }
 
+        $templatefiles = '';
+        if ($question->hastemplatefile) {
+            $templatefiles = $this->get_template_files($question);
+        }
+
         $result = '';
         $result .= html_writer::tag('div', $question->format_questiontext($qa),
             array('class' => 'qtext'));
-
+        $result .= html_writer::tag('div', $templatefiles, array('class' => 'templatefiles'));
         $result .= html_writer::start_tag('div', array('class' => 'ablock'));
         $result .= html_writer::tag('div', $files, array('class' => 'attachments'));
         $result .= html_writer::end_tag('div');
 
         return $result;
+    }
+
+    private function get_template_files($question) {
+        $fs = get_file_storage();
+        $files = $fs->get_area_files($question->contextid, 'qtype_digitalliteracy',
+            'templatefiles', $question->id, 'filename', false);
+        $output = array();
+        foreach ($files as $file) {
+            $output[] = html_writer::tag('p', html_writer::link($this->get_url($file, $question),
+                $this->output->pix_icon(file_file_icon($file), get_mimetype_description($file),
+                    'moodle', array('class' => 'icon')) . ' ' . s($file->get_filename())));
+        }
+        return implode($output);
+    }
+
+    private function get_url($file, $question) {
+        return moodle_url::make_pluginfile_url($question->contextid, 'qtype_digitalliteracy',
+            'templatefiles', $question->id, $file->get_filepath(), $file->get_filename(), true);
     }
 
     /**
@@ -83,37 +106,4 @@ class qtype_digitalliteracy_renderer extends qtype_renderer {
                 'input', array('type' => 'hidden', 'name' => $qa->get_qt_field_name('attachments'),
                 'value' => $pickeroptions->itemid)) . $text;
     }
-
-    //TODO
-
-//    /**
-//     * @param object $context the context the attempt belongs to.
-//     * @param int $draftitemid draft item id.
-//     * @return array filepicker options for the editor.
-//     */
-//    protected function get_filepicker_options($context, $draftitemid) {
-//        return question_utils::get_filepicker_options($context, $draftitemid);
-//    }
-//
-//    protected function filepicker_html($inputname, $draftitemid) {
-//        $nonjspickerurl = new moodle_url('/repository/draftfiles_manager.php', array(
-//            'action' => 'browse',
-//            'env' => 'editor',
-//            'itemid' => $draftitemid,
-//            'subdirs' => false,
-//            'maxfiles' => -1,
-//            'sesskey' => sesskey(),
-//        ));
-//
-//        return html_writer::empty_tag('input', array('type' => 'hidden',
-//                'name' => $inputname . ':itemid', 'value' => $draftitemid)) .
-//            html_writer::tag('noscript', html_writer::tag('div',
-//                html_writer::tag('object', '', array('type' => 'text/html',
-//                    'data' => $nonjspickerurl, 'height' => 160, 'width' => 600,
-//                    'style' => 'border: 1px solid #000;'))));
-//    }
-//
-//    protected function class_name() {
-//        return 'qtype_digitalliteracy_editorfilepicker';
-//    }
 }

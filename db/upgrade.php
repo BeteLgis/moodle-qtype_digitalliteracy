@@ -18,7 +18,7 @@ function xmldb_qtype_digitalliteracy_upgrade($oldversion) {
     // Automatically generated Moodle v3.4.0 release upgrade line.
     // Put any upgrade step following this.
 
-    if ($oldversion < 2020041430) {
+    if ($oldversion < 2020041448) {
 
         // Define table qtype_digitalliteracy_option to be created.
         $table = new xmldb_table('qtype_digitalliteracy_option');
@@ -27,9 +27,12 @@ function xmldb_qtype_digitalliteracy_upgrade($oldversion) {
         $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
         $table->add_field('questionid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
         $table->add_field('responseformat', XMLDB_TYPE_CHAR, '16', null, XMLDB_NOTNULL, null, 'excel');
-        $table->add_field('attachments', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '1');
         $table->add_field('attachmentsrequired', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '1');
         $table->add_field('filetypeslist', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('hastemplatefile', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('firstcoef', XMLDB_TYPE_NUMBER, '4, 1', null, XMLDB_NOTNULL, null, '33');
+        $table->add_field('secondcoef', XMLDB_TYPE_NUMBER, '4, 1', null, XMLDB_NOTNULL, null, '33');
+        $table->add_field('thirdcoef', XMLDB_TYPE_NUMBER, '4, 1', null, XMLDB_NOTNULL, null, '34');
 
         // Adding keys to table qtype_digitalliteracy_option.
         $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
@@ -41,9 +44,8 @@ function xmldb_qtype_digitalliteracy_upgrade($oldversion) {
         }
 
         // Digitalliteracy savepoint reached.
-        upgrade_plugin_savepoint(true, 2020041430, 'qtype', 'digitalliteracy');
+        upgrade_plugin_savepoint(true, 2020041448, 'qtype', 'digitalliteracy');
     }
-
 
     // Automatically generated Moodle v3.5.0 release upgrade line.
     // Put any upgrade step following this.

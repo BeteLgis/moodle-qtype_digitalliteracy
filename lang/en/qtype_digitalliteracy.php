@@ -1,5 +1,5 @@
 <?php
-$string['notgradableanswer'] = 'Please upload files';
+$string['notgradableanswer'] = 'Please upload a file!';
 $string['excel'] = 'Excel';
 $string['powerpoint'] = 'Power point';
 
@@ -12,13 +12,25 @@ $string['attachmentsrequired'] = 'Require attachments';
 $string['attachmentsrequired_help'] = 'This option specifies the minimum number of attachments required for a response to be considered gradable.';
 $string['mustrequirefewer'] = 'You cannot require more attachments than you allow.';
 
+$string['responsetemplateheader'] = 'Response template';
+$string['responsefiletemplate'] = 'Response file template';
+$string['hastemplatefile'] = 'Does the task have a template file?';
+
+$string['firstcoef'] = 'Cell value';
+$string['secondcoef'] = 'Cell format';
+$string['thirdcoef'] = 'Enclosures [Images, Graphs etc]';
+$string['notahunred'] = 'Sum is not a hundred';
+
 $string['graded'] = 'Answer was graded';
 $string['noattachments'] = 'No attachments';
-$string['answered'] = 'Answered question';
+$string['answered'] = 'You have answered the question';
+$string['notanswered'] = 'You have NOT answered the question';
 $string['sourcefiles'] = 'Source files';
 
+$string['firstslider'] = 'First Slider';
+
 $string['pluginname'] = 'Digital Literacy';
-$string['pluginname_help'] = 'In response to a question, the respondent may upload one or more files and/or enter text online. A response template may be provided. Responses must be graded manually.';
+$string['pluginname_help'] = 'Autogradable Digital Literacy (Excel, Powerpoint) question.';
 $string['pluginnameadding'] = 'Adding an Digital Literacy question';
 $string['pluginnameediting'] = 'Editing an Digital Literacy question';
-$string['pluginnamesummary'] = 'Allows a response of a file upload and/or online text. This must then be graded manually.';
+$string['pluginnamesummary'] = 'Allows Spreadsheet and Presentation file uploads, automatically graded!';

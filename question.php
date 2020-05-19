@@ -6,48 +6,48 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
 
     public $responseformat;
 
-    public $attachments;
-
+//    public $attachments;
     /** @var int The number of attachments required for a response to be complete. */
     public $attachmentsrequired;
 
     /** @var array The string array of file types accepted upon file submission. */
     public $filetypeslist;
 
-    //public $attachmentoptions;
+    public $firstcoef;
+    public $secondcoef;
+    public $thirdcoef;
+
+    public $hastemplatefile;
+
+//    public $attachmentoptions;
 
     public function get_expected_data()
     {
-        // $this->responseformat == 'editorfilepicker'
-        $expecteddata = array('answer' => PARAM_RAW);
+        return array('attachments' => question_attempt::PARAM_FILES);
+    }
 
-        $expecteddata['answerformat'] = PARAM_ALPHANUMEXT;
-        if ($this->attachments != 0) { // for future
-            $expecteddata['attachments'] = question_attempt::PARAM_FILES;
+    public function get_correct_response()
+    {
+        return null; // TODO add correct file?
+    }
+
+    public function summarise_response(array $response)
+    {
+        if (array_key_exists('attachments', $response)
+            && $response['attachments'] instanceof question_response_files) {
+            return get_string('answered', 'qtype_digitalliteracy');
+        } else {
+            return get_string('notanswered', 'qtype_digitalliteracy');
         }
-        return $expecteddata;
     }
 
     public function classify_response(array $response) {
-        if (!array_key_exists('attachments', $response)) {
+        if (!$this->is_gradable_response($response)) {
             return array($this->id => question_classified_response::no_response());
         }
         list($fraction) = $this->grade_response($response);
         return array($this->id => new question_classified_response(0,
             get_string('graded', 'qtype_digitalliteracy'), $fraction));
-    }
-
-    public function summarise_response(array $response)
-    {
-        if (!array_key_exists('attachments', $response)) {
-            return get_string('noattachments', 'qtype_digitalliteracy');
-        } else
-            return get_string('answered', 'qtype_digitalliteracy');
-    }
-
-    public function get_correct_response()
-    {
-        return null; // TODO
     }
 
     public function is_complete_response(array $response)
@@ -75,27 +75,21 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
             $attachcount = 0;
         }
 
-        // Determine if we have /some/ content to be graded.
-        $hascontent = ($attachcount > 0);
-
-        // Determine if we meet the optional requirements.
-       // $meetsinlinereq = (!$this->responserequired) || ($this->responseformat == 'noinline'); // TODO
-        $meetsattachmentreq = ($attachcount >= $this->attachmentsrequired);
-
         // The response is complete iff all of our requirements are met.
-        return $hascontent && $meetsattachmentreq;
+        return $attachcount >= $this->attachmentsrequired;
     }
 
     public function is_same_response(array $prevresponse, array $newresponse)
     {
-        return ($this->attachments == 0 ||
+        return ($this->attachmentsrequired == 0 ||
                 question_utils::arrays_same_at_key_missing_is_blank(
                     $prevresponse, $newresponse, 'attachments'));
     }
 
     public function is_gradable_response(array $response) {
         if (array_key_exists('attachments', $response)
-            && $response['attachments'] instanceof question_response_files) {
+            && $response['attachments'] instanceof question_response_files
+            && count($response['attachments']->get_files()) > 0) {
             return true;
         } else {
             return false;
@@ -114,8 +108,18 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
     {
         // TODO validation
         $dir = make_request_directory();
-        $comparator = $this->responseformat === 'excel' ? new qtype_digitalliteracy_excel_tester()
-            : new qtype_digitalliteracy_powerpoint_tester();
+        switch ($this->responseformat)
+        {
+            case 'excel':
+                $comparator =  new qtype_digitalliteracy_excel_tester();
+                break;
+            case 'powerpoint':
+                $comparator = new qtype_digitalliteracy_powerpoint_tester();
+                break;
+            default :
+//                throw new dml_read_exception('qtype_digitalliteracy_option');
+                return array(0, question_state::$needsgrading);
+        }
         $fraction = ($comparator)->compareFiles($this->get_sorcefiles($dir)[0],
             $this->get_responsefiles($response, $dir)[0]);
         return array($fraction, question_state::graded_state_for_fraction($fraction));
@@ -135,7 +139,6 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
         return $this->get_paths_from_files($files, $dir);
     }
 
-
     public function get_paths_from_files($files, $dir)
     {
         $result = array();
@@ -152,7 +155,8 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
 
     public function check_file_access($qa, $options, $component, $filearea, $args, $forcedownload) {
         if ($component == 'question' && $filearea == 'response_attachments') {
-            return $this->attachments != 0;
+            // Response attachments visible if the question has them.
+            return $this->attachmentsrequired != 0;
 
         } else {
             return parent::check_file_access($qa, $options, $component,

@@ -11,13 +11,11 @@ class qtype_digitalliteracy extends question_type {
         global $DB;
         $question->options = $DB->get_record('qtype_digitalliteracy_option',
             array('questionid' => $question->id), '*', MUST_EXIST);
-
         parent::get_question_options($question);
     }
 
     public function save_question_options($formdata) {
         global $DB;
-        $context = $formdata->context;
 
         $options = $DB->get_record('qtype_digitalliteracy_option', array('questionid' => $formdata->id));
         if (!$options) {
@@ -27,13 +25,17 @@ class qtype_digitalliteracy extends question_type {
         }
 
         $options->responseformat = $formdata->responseformat;
-        $options->attachments = $formdata->attachments;
         $options->attachmentsrequired = $formdata->attachmentsrequired;
         if (!isset($formdata->filetypeslist)) {
             $options->filetypeslist = "";
         } else {
             $options->filetypeslist = $formdata->filetypeslist;
         }
+        $options->hastemplatefile = $formdata->hastemplatefile;
+        $options->firstcoef = $formdata->firstcoef;
+        $options->secondcoef = $formdata->secondcoef;
+        $options->thirdcoef = $formdata->thirdcoef;
+
         $DB->update_record('qtype_digitalliteracy_option', $options);
     }
 
@@ -45,6 +47,8 @@ class qtype_digitalliteracy extends question_type {
         if ($form) {
             $question = file_postupdate_standard_filemanager($form, 'sourcefiles', array('subdirs' => false),
                 $filecontext, 'qtype_digitalliteracy', 'sourcefiles', $question->id);
+            $question = file_postupdate_standard_filemanager($form, 'templatefiles', array('subdirs' => false),
+                $filecontext, 'qtype_digitalliteracy', 'templatefiles', $question->id);
         }
         return $question;
     }
@@ -52,10 +56,14 @@ class qtype_digitalliteracy extends question_type {
     protected function initialise_question_instance(question_definition $question, $questiondata) {
         parent::initialise_question_instance($question, $questiondata);
         $question->responseformat = $questiondata->options->responseformat;
-        $question->attachments = $questiondata->options->attachments;
         $question->attachmentsrequired = $questiondata->options->attachmentsrequired;
         $filetypesutil = new \core_form\filetypes_util();
         $question->filetypeslist = $filetypesutil->normalize_file_types($questiondata->options->filetypeslist);
+
+        $question->hastemplatefile = $questiondata->options->hastemplatefile;
+        $question->firstcoef = $questiondata->options->firstcoef;
+        $question->secondcoef = $questiondata->options->secondcoef;
+        $question->thirdcoef = $questiondata->options->thirdcoef;
     }
 
     public function delete_question($questionid, $contextid) {
@@ -77,17 +85,6 @@ class qtype_digitalliteracy extends question_type {
     }
 
     /**
-     * @return array the choices that should be offered for the number of attachments.
-     */
-    public function attachment_options() {
-        return array(
-            1 => '1',
-            2 => '2',
-            3 => '3'
-        );
-    }
-
-    /**
      * @return array the choices that should be offered for the number of required attachments.
      */
     public function attachments_required_options() {
@@ -98,16 +95,25 @@ class qtype_digitalliteracy extends question_type {
         );
     }
 
+    public function attachments_filetypes_option() {
+        return array(
+            'onlytypes' => ['spreadsheet', 'presentation']
+        );
+    }
+
     public function move_files($questionid, $oldcontextid, $newcontextid) {
         parent::move_files($questionid, $oldcontextid, $newcontextid);
         $fs = get_file_storage();
         $fs->move_area_files_to_new_context($oldcontextid,
             $newcontextid, 'qtype_digitalliteracy', 'sourcefiles', $questionid);
+        $fs->move_area_files_to_new_context($oldcontextid,
+            $newcontextid, 'qtype_digitalliteracy', 'templatefiles', $questionid);
     }
 
     protected function delete_files($questionid, $contextid) {
         parent::delete_files($questionid, $contextid);
         $fs = get_file_storage();
         $fs->delete_area_files($contextid, 'qtype_digitalliteracy', 'sourcefiles', $questionid);
+        $fs->delete_area_files($contextid, 'qtype_digitalliteracy', 'templatefiles', $questionid);
     }
 }

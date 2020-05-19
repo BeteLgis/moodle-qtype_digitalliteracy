@@ -31,8 +31,6 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
                 $matches++;
             $total++;
         }
-        //var_dump($matches / $total);
-        //throw new Exception("a");
         return $matches / $total;
     }
 
@@ -43,6 +41,6 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
 
     public function validate()
     {
-        // TODO: Implement validate() method.
+
     }
 }

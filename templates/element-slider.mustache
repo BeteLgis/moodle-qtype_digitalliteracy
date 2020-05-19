@@ -1,0 +1,36 @@
+{{!
+    @template qtype_digitalliteracy/element-slider
+
+    Simple slider form element template.
+
+    Context variables required for this template:
+    * id - Element id,
+    * name - Element name,
+    * type - Element type,
+    * attributes - Element attributes
+
+    Example context (json):
+    {
+        "element": {
+            "id": "id_slider",
+            "name": "slider",
+            "value": "30",
+            "frozen": false,
+            "hardfrozen": false,
+            "type": "radio",
+            "attributes": ""
+        }
+    }
+}}
+{{< core_form/element-template }}
+    {{$element}}
+        <input type="range"
+                name="{{element.name}}"
+        {{#element.frozen}}
+                readonly {{#element.hardfrozen}}disabled{{/element.hardfrozen}}
+        {{/element.frozen}}
+                id="{{element.id}}"
+                value="{{element.value}}"
+                {{{element.attributes}}} >
+    {{/element}}
+{{/ core_form/element-template }}

@@ -30,7 +30,34 @@
  * @return bool
  */
 function qtype_digitalliteracy_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options=array()) {
-    global $CFG;
-    require_once($CFG->libdir . '/questionlib.php');
-    question_pluginfile($course, $context, 'qtype_digitalliteracy', $filearea, $args, $forcedownload, $options);
+    global $CFG, $DB;
+
+//    if ($context->contextlevel != CONTEXT_MODULE) {
+//        return false;
+//    }
+//
+    require_login($course, false, $cm); // TODO
+//
+//    if (!$quiz = $DB->get_record('quiz', array('id'=>$cm->instance))) {
+//        return false;
+//    }
+//
+//    // The 'intro' area is served by pluginfile.php.
+//    $fileareas = array('feedback');
+//    if (!in_array($filearea, $fileareas)) {
+//        return false;
+//    }
+//
+//    $feedbackid = (int)array_shift($args);
+//    if (!$feedback = $DB->get_record('quiz_feedback', array('id'=>$feedbackid))) {
+//        return false;
+//    }
+
+    $fs = get_file_storage();
+    $relativepath = implode('/', $args);
+    $fullpath = "/$context->id/qtype_digitalliteracy/$filearea/$relativepath";
+    if (!$file = $fs->get_file_by_hash(sha1($fullpath)) or $file->is_directory()) {
+        return false;
+    }
+    send_stored_file($file, 0, 0, true, $options);
 }
