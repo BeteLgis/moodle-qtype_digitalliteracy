@@ -81,48 +81,6 @@ class qtype_digitalliteracy_powerpoint_tester implements qtype_digitalliteracy_c
         return 0;
     }
 
-    //Получение текста с презентации
-    private function getText($PPTX){
-        $slidesArray = $PPTX->getAllSlides();
-        $result = '';
-        foreach ($slidesArray as $slide){
-            $result = $result . $this->getTextFromSlide($slide);
-        }
-        return $result;
-    }
-
-    /*
-     * Comparing text from original presentation and tested presentation
-     * @params $analysPptx -- Analys presentation
-     *
-     * @return percentage of comparing presentations text. When text is big it can work incorrectly
-     */
-    private function compareText($sample_pptx, $tested_pptx){
-        $sampleText = $this->getText($sample_pptx);
-        $testText = $this->getText($tested_pptx);
-        $diff = levenshtein($sampleText, $testText);
-        return 1 - abs($diff/max(strlen($sampleText),strlen($testText)));
-    }
-
-    /*
-     * Get all text from slide
-     * @params: $slide -- slide with text
-     * @return - all text from all RichText Shapes
-     */
-    private function getTextFromSlide($slide){
-        $res = "";
-        $shapes = $slide->getShapeCollection();
-        foreach($shapes as $shape){
-            if($shape instanceof PhpOffice\PhpPresentation\Shape\RichText){
-                $paragraphs = $shape->getParagraphs();
-                foreach($paragraphs as $paragraph){
-                    $res = $res . $paragraph->getPlainText();
-                }
-            }
-        }
-        return $res."\n";
-    }
-
     /*
      * Comparing shapes without RichText shapes
      * @params: $analysPptx -- analys presentation
@@ -290,7 +248,7 @@ class qtype_digitalliteracy_powerpoint_tester implements qtype_digitalliteracy_c
         if($sample->getBulletNumericStartAt() == $test->getBulletNumericStartAt() )
             $scored += 1;
 
-        
+
         if($isBinary){
             if($scored == 4)
                 return array(1, 1);
