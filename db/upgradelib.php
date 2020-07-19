@@ -1,5 +1,7 @@
 <?php
 
+defined('MOODLE_INTERNAL') || die();
+
 /**
  * Class for converting attempt data for essay questions when upgrading
  * attempts to the new question engine.

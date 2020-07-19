@@ -1,5 +1,7 @@
 <?php
 
+defined('MOODLE_INTERNAL') || die();
+
 /**
  * Upgrade code for the essay question type.
  * @param int $oldversion the version we are upgrading from.
@@ -18,34 +20,27 @@ function xmldb_qtype_digitalliteracy_upgrade($oldversion) {
     // Automatically generated Moodle v3.4.0 release upgrade line.
     // Put any upgrade step following this.
 
-    if ($oldversion < 2020041448) {
+    if (false) {
 
-        // Define table qtype_digitalliteracy_option to be created.
+        // Rename field showmistakes on table qtype_digitalliteracy_option to NEWNAMEGOESHERE.
         $table = new xmldb_table('qtype_digitalliteracy_option');
 
-        // Adding fields to table qtype_digitalliteracy_option.
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
-        $table->add_field('questionid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-        $table->add_field('responseformat', XMLDB_TYPE_CHAR, '16', null, XMLDB_NOTNULL, null, 'excel');
-        $table->add_field('attachmentsrequired', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '1');
-        $table->add_field('filetypeslist', XMLDB_TYPE_TEXT, null, null, null, null, null);
-        $table->add_field('hastemplatefile', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('firstcoef', XMLDB_TYPE_NUMBER, '4, 1', null, XMLDB_NOTNULL, null, '33');
-        $table->add_field('secondcoef', XMLDB_TYPE_NUMBER, '4, 1', null, XMLDB_NOTNULL, null, '33');
-        $table->add_field('thirdcoef', XMLDB_TYPE_NUMBER, '4, 1', null, XMLDB_NOTNULL, null, '34');
+        $field = new xmldb_field('randomization', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1', 'binarygrading');
 
-        // Adding keys to table qtype_digitalliteracy_option.
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
-        $table->add_key('questionid', XMLDB_KEY_FOREIGN_UNIQUE, array('questionid'), 'question', array('id'));
+        $field_2 = new xmldb_field('checkbutton', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1', 'showmistakes');
 
-        // Conditionally launch create table for qtype_digitalliteracy_option.
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
+        // Launch rename field showmistakes.
+        $dbman->rename_field($table, $field, 'showmistakes');
+
+        // Conditionally launch add field checkbutton.
+        if (!$dbman->field_exists($table, $field_2)) {
+            $dbman->add_field($table, $field_2);
         }
 
         // Digitalliteracy savepoint reached.
-        upgrade_plugin_savepoint(true, 2020041448, 'qtype', 'digitalliteracy');
+        upgrade_plugin_savepoint(true, 2020041454, 'qtype', 'digitalliteracy');
     }
+
 
     // Automatically generated Moodle v3.5.0 release upgrade line.
     // Put any upgrade step following this.

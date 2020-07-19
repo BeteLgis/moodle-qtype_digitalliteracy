@@ -610,7 +610,7 @@ class Worksheet implements IComparable
     /**
      * Return an array of the names of charts on this worksheet.
      *
-     * @return string[] The names of charts
+     * @return string[] The names of {@link Chart}
      */
     public function getChartNames()
     {

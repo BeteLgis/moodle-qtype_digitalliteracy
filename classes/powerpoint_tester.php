@@ -6,14 +6,14 @@ use PhpOffice\PhpPresentation\Style\Color;
 use PhpOffice\PhpPresentation\Style\Alignment;
 system('pip install python-pptx');
 
-class qtype_digitalliteracy_powerpoint_tester implements qtype_digitalliteracy_comparator
+class qtype_digitalliteracy_powerpoint_tester implements qtype_digitalliteracy_compare_interface
 {
     public function validate()
     {
         // TODO: Implement validate() method.
     }
 
-    public function compareFiles($source, $sample)
+    public function compare_files($source, $sample, $template, array $coefficients)
     {
         // TODO validation!
         $samplePptx = IOFactory::load($source);
@@ -272,5 +272,10 @@ class qtype_digitalliteracy_powerpoint_tester implements qtype_digitalliteracy_c
             $tested_slide->getSlideLayout()->getLayoutName())
             return 1;
         return 0;
+    }
+
+    public function validate_filearea($question, $filearea, $dir)
+    {
+        // TODO: Implement validate_filearea() method.
     }
 }

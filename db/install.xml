@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="question/type/digitalliteracy/db" VERSION="20200519" COMMENT="XMLDB file for Moodle question/type/digitalliteracy"
+<XMLDB PATH="question/type/digitalliteracy/db" VERSION="20200718" COMMENT="XMLDB file for Moodle question/type/digitalliteracy"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../../lib/xmldb/xmldb.xsd"
 >
@@ -15,6 +15,9 @@
         <FIELD NAME="firstcoef" TYPE="number" LENGTH="4" NOTNULL="true" DEFAULT="33" SEQUENCE="false" DECIMALS="1" COMMENT="First coefficient"/>
         <FIELD NAME="secondcoef" TYPE="number" LENGTH="4" NOTNULL="true" DEFAULT="33" SEQUENCE="false" DECIMALS="1" COMMENT="Second coefficient"/>
         <FIELD NAME="thirdcoef" TYPE="number" LENGTH="4" NOTNULL="true" DEFAULT="34" SEQUENCE="false" DECIMALS="1" COMMENT="Third coefficient"/>
+        <FIELD NAME="binarygrading" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Is question binary graded"/>
+        <FIELD NAME="showmistakes" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Whether to show the auto-grade result to the students or not"/>
+        <FIELD NAME="checkbutton" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Show the check button or not"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
