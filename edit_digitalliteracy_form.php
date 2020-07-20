@@ -14,14 +14,14 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
     protected function definition_inner($mform) {
         $qtype = question_bank::get_qtype('digitalliteracy');
 
-        $options = $this->fileoptions;
         $options['subdirs'] = false;
 
-        $mform->addElement('header', 'responseoptions', get_string('responseoptions', 'qtype_digitalliteracy'));
-        $mform->setExpanded('responseoptions');
+        $mform->addElement('header', 'responsefileoptions', get_string('responsefileoptions',
+            'qtype_digitalliteracy'));
+        $mform->setExpanded('responsefileoptions');
 
-        $mform->addElement('filemanager', 'sourcefiles_filemanager', get_string('sourcefiles', 'qtype_digitalliteracy'), null,
-            $options);
+        $mform->addElement('filemanager', 'sourcefiles_filemanager', get_string('sourcefiles',
+            'qtype_digitalliteracy'), null, $options);
 
         $mform->addElement('select', 'responseformat',
             get_string('responseformat', 'qtype_digitalliteracy'), $qtype->response_formats());
@@ -34,36 +34,63 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
 
         $mform->addElement('filetypes', 'filetypeslist', get_string('acceptedfiletypes',
             'qtype_digitalliteracy'), $qtype->attachments_filetypes_option());
-//        $mform->setDefault('filetypeslist', 'xlsx');
-
+        $mform->setDefault('filetypeslist', 'xlsx');
         $mform->addHelpButton('filetypeslist', 'acceptedfiletypes', 'qtype_digitalliteracy');
+//        $mform->addRule('filetypeslist', null, 'required', null, 'client');
 
 //        $mform->addElement('slider', 'firstslider', '[Feature is in development]',
 //            array('min' => 0, 'max' => 10, 'value' => 5));
 
-        $mform->addElement('advcheckbox', 'hastemplatefile', get_string('hastemplatefile', 'qtype_digitalliteracy'),
-            null, null, array(0, 1));
+        $mform->addElement('advcheckbox', 'hastemplatefile', get_string('hastemplatefile',
+            'qtype_digitalliteracy'));
+        $mform->setDefault('hastemplatefile', 0);
+        $mform->addElement('filemanager', 'templatefiles_filemanager', get_string('responsefiletemplate',
+            'qtype_digitalliteracy'), null, $options);
+        $mform->hideif('templatefiles_filemanager', 'hastemplatefile');
 
-        $mform->addElement('filemanager', 'templatefiles_filemanager', get_string('responsefiletemplate', 'qtype_digitalliteracy'), null,
-           $options);
-        $mform->disabledIF('templatefiles_filemanager', 'hastemplatefile');
+        $mform->addElement('header', 'responsegradingoptions', get_string('responsegradingoptions',
+            'qtype_digitalliteracy'));
+        $mform->setExpanded('responsegradingoptions');
 
-        $mform->addElement('header', 'responsetemplateheader', get_string('responsetemplateheader', 'qtype_digitalliteracy'));
+        $this->add_group($mform, array('firstcoef' => 'text', 'paramvalue' => 'advcheckbox',
+            'paramtype' => 'advcheckbox'), 'coef_value_group');
 
-        $mform->addElement('text', 'firstcoef', get_string('firstcoef', 'qtype_digitalliteracy'));
-        $mform->addElement('text', 'secondcoef', get_string('secondcoef', 'qtype_digitalliteracy'));
-        $mform->addElement('text', 'thirdcoef', get_string('thirdcoef', 'qtype_digitalliteracy'));
-        $mform->setType('firstcoef', PARAM_TEXT);
-        $mform->setType('secondcoef', PARAM_TEXT);
-        $mform->setType('thirdcoef', PARAM_TEXT);
+        $this->add_group($mform, array('secondcoef' => 'text', 'parambold' => 'advcheckbox',
+            'paramfillcolor' => 'advcheckbox'), 'coef_format_group');
 
-        $mform->addElement('advcheckbox', 'binarygrading', get_string('binarygrading', 'qtype_digitalliteracy'),
-            null, null, array(0, 1));
-        $mform->addElement('advcheckbox', 'showmistakes', get_string('showmistakes', 'qtype_digitalliteracy'),
-            null, null, array(0, 1));
-        $mform->addElement('advcheckbox', 'checkbutton', get_string('checkbutton', 'qtype_digitalliteracy'),
-            null, null, array(0, 1));
+        $this->add_group($mform, array('thirdcoef' => 'text', 'paramcharts' => 'advcheckbox',
+            'paramimages' => 'advcheckbox'), 'coef_enclosures_group');
+
+        $this->add_group($mform, array_fill_keys(array('excludetemplate', 'binarygrading', 'showmistakes',
+            'checkbutton'), 'advcheckbox'), 'commonsettings');
+
+        $mform->setDefault('firstcoef', '100');
+        $mform->setDefault('secondcoef', '0');
+        $mform->setDefault('thirdcoef', '0');
+        $mform->setDefault('binarygrading', '0');
+        $mform->disabledIf('excludetemplate', 'hastemplatefile');
     }
+
+    private function add_group(&$mform, array $names, $groupname) {
+        $group = array();
+        foreach ($names as $name => $type) {
+            if ($type === 'text') {
+                $significance = $name;
+                $group[] = $mform->createElement($type, $name, get_string('significance',
+                    'qtype_digitalliteracy'));
+                $mform->setType($name, PARAM_RAW);
+            } else {
+                $group[] = $mform->createElement($type, $name, get_string($name,'qtype_digitalliteracy'));
+                $mform->setDefault($name, '1');
+            }
+        }
+        $mform->addElement('group', $groupname,
+            get_string($groupname, 'qtype_digitalliteracy'), $group, null, false);
+        $mform->addHelpButton($groupname, $groupname, 'qtype_digitalliteracy');
+        if (isset($significance))
+            $mform->disabledIf($groupname, $significance, 'eq', 0);
+    }
+
 
     /** Perform an preprocessing needed on the data passed to set_data() before it is used to initialise the form.
      * @Overrides question_edit_form::data_preprocessing
@@ -75,35 +102,26 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
             return $question;
         }
 
-        $question->responseformat = $question->options->responseformat;
-        $question->attachmentsrequired = $question->options->attachmentsrequired;
+        $extraquestionfields = (new qtype_digitalliteracy())->extra_question_fields();
+        if (is_array($extraquestionfields)) {
+            array_shift($extraquestionfields);
+            foreach ($extraquestionfields as $field) {
+                $question->$field = $question->options->$field;
+            }
+        }
         $question->filetypeslist = $question->options->filetypeslist;
-        $question->hastemplatefile = $question->options->hastemplatefile;
 
-        $question->firstcoef = $question->options->firstcoef;
-        $question->secondcoef = $question->options->secondcoef;
-        $question->thirdcoef = $question->options->thirdcoef;
-
-        $question->binarygrading = $question->options->binarygrading;
-        $question->showmistakes = $question->options->showmistakes;
-        $question->checkbutton = $question->options->checkbutton;
-//        $this->fileoptions TODO
+//        $this->fileoptions; TODO
         // prepare files
         $filecontext = context::instance_by_id($question->contextid, MUST_EXIST);
-        $question = file_prepare_standard_filemanager($question, 'sourcefiles',
-            array('subdirs' => false), $filecontext, 'qtype_digitalliteracy',
-            'sourcefiles', $question->id);
-        $question = file_prepare_standard_filemanager($question, 'templatefiles',
-            array('subdirs' => false), $filecontext, 'qtype_digitalliteracy',
-            'templatefiles', $question->id);
+        foreach (array('sourcefiles', 'templatefiles') as $filearea) {
+            file_prepare_standard_filemanager($question, $filearea,
+                array('subdirs' => false), $filecontext, 'qtype_digitalliteracy',
+                $filearea, $question->id);
+        }
         return $question;
     }
-    /** Validation assistant method */
-    private function coefval($fromform, $coef) {
-        if (!is_numeric($fromform[$coef]) || ($value = $fromform[$coef]) < 0 || $value > 100)
-            return -1;
-        return $value;
-    }
+
     /** Dummy stub method - override if you needed to perform some extra validation.
      * If there are errors return array of errors (“fieldname”=>“error message”), otherwise true if ok.
      * Server side rules do not work for uploaded files, implement serverside rules here if needed.
@@ -112,18 +130,46 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
      * @param array $fromform array of ("fieldname"=>value) of submitted data*/
     public function validation($fromform, $files) {
         $errors = parent::validation($fromform, $files);
-        if (($value1 = $this->coefval($fromform, 'firstcoef')) == -1)
-            $errors['firstcoef'] = get_string('validatecoef', 'qtype_digitalliteracy');
-        if (($value2 = $this->coefval($fromform, 'secondcoef')) == -1)
-            $errors['secondcoef'] = get_string('validatecoef', 'qtype_digitalliteracy');
-        if (($value3 = $this->coefval($fromform, 'thirdcoef')) == -1)
-            $errors['thirdcoef'] = get_string('validatecoef', 'qtype_digitalliteracy');
+        $coefs = array('firstcoef' => 'coef_value_group', 'secondcoef' => 'coef_format_group',
+            'thirdcoef' => 'coef_enclosures_group');
+        $groups = array('coef_value_group' => ['paramvalue', 'paramtype'], 'coef_format_group' =>
+        ['parambold', 'paramfillcolor'], 'coef_enclosures_group' => ['paramcharts', 'paramimages']);
 
-        if ($value1 != -1 && $value2 != -1 && $value3 != -1 && ($value1 + $value2 + $value3 != 100)) {
-            $errors['firstcoef'] = get_string('notahunred', 'qtype_digitalliteracy');
-            $errors['secondcoef'] = get_string('notahunred', 'qtype_digitalliteracy');
-            $errors['thirdcoef'] = get_string('notahunred', 'qtype_digitalliteracy');
+        $options = array(
+            'options' => array(
+                'default' => -1,
+                'min_range' => 0,
+                'max_range' => 100
+            )
+        );
+        $values = array();
+        foreach ($coefs as $value => $group) {
+            if (($res = filter_var($fromform[$value], FILTER_VALIDATE_INT, $options)) < 0) {
+                $errors[$group] = get_string('validatecoef', 'qtype_digitalliteracy');
+            } else
+                $values[$value] = $res;
         }
+        if (count($values) === 3 && array_sum($values) != 100) {
+            foreach ($coefs as $value => $group) {
+               $errors[$group] = get_string('notahunred', 'qtype_digitalliteracy');
+            }
+        }
+        foreach ($values as $key => $value) {
+            if ($value != 0) {
+                $counter = false;
+                foreach ($groups[$coefs[$key]] as $checkbox) {
+                    if ($fromform[$checkbox] == 1) {
+                        $counter = true;
+                        break;
+                    }
+                }
+                if (!$counter) {
+                    $prefix = empty($errors[$coefs[$key]]) ? '' : $errors[$coefs[$key]] . ' | ';
+                    $errors[$coefs[$key]] = $prefix . get_string('tickacheckbox', 'qtype_digitalliteracy');
+                }
+            }
+        }
+
 //        $this->validateFiles($fromform, $errors); TODO
 
         return $errors;

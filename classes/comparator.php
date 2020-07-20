@@ -8,14 +8,16 @@ class qtype_digitalliteracy_comparator
 {
 //    public function validate_filearea($question, $filearea, $dir); // file validation (check whether it is correctly loaded)
 //                                // number of pages (slides) not 0!!!!
-    /** @returns array */
-    public final function grade_response(array $response, array $data) {
+    /**
+     * @return array|bool|float|int|string
+     */
+    public function grade_response(array $response, &$data) {
         $request_directory = $this->create_directory();
-        if (!$request_directory)
-            return array('error' => $request_directory);
+        if (is_array($request_directory))
+            return $request_directory;
 //        try {
-            $data = $this->copy_files($data, $response, $request_directory);
-            $data['request_directory'] = $request_directory;
+            $this->copy_files($data, $response, $request_directory);
+            $data->request_directory = $request_directory;
             $result = $this->process_comparison($data);
 //        } catch (Exception $ex) {
 //            return array('error' => $ex->getMessage());
@@ -27,21 +29,22 @@ class qtype_digitalliteracy_comparator
         try {
             $request_directory = make_request_directory();
         } catch (Exception $ex) {
-            return $ex->getMessage();
+            return array('error' => $ex->getMessage());
         }
         return $request_directory;
     }
 
-    private function copy_files(array $data, array $response, $dir) {
-        $data['source_path'] = $this->get_filearea_files('source', $data['contextid'],
-            $data['itemid'], 'sourcefiles', $dir)[0];
-//        $data['template_path'] = $this->get_filearea_files('template', $data['contextid'],
-//            $data['itemid'], 'templatefiles', $dir)[0];
+    private function copy_files(&$data, array $response, $dir) {
+        $data->source_path = $this->get_filearea_files('source', $data->contextid,
+            $data->id, 'sourcefiles', $dir)[0];
+        if ($data->hastemplatefile && $data->excludetemplate) {
+            $data->template_path = $this->get_filearea_files('template', $data->contextid,
+                $data->id, 'templatefiles', $dir)[0];
+        }
         $files = $response['attachments']->get_files();
-        $data['response_path'] = $this->get_paths_from_files('response',
+        $data->response_path = $this->get_paths_from_files('response',
             $files, $dir)[0];
-        $data['mistakes_name'] = array_values($files)[0]->get_filename();
-        return $data;
+        $data->mistakes_name = array_values($files)[0]->get_filename();
     }
 
     public function get_filearea_files($name, $contextid, $itemid, $filearea, $dir)
@@ -71,8 +74,8 @@ class qtype_digitalliteracy_comparator
         return $result;
     }
 
-    public function process_comparison(array $data) {
-        switch ($data['responseformat'])
+    public function process_comparison(&$data) {
+        switch ($data->responseformat)
         {
             case 'excel':
                 $comparator = new qtype_digitalliteracy_excel_tester();
@@ -106,5 +109,5 @@ class qtype_digitalliteracy_comparator
 }
 
 interface qtype_digitalliteracy_compare_interface {
-    public function compare_files(array $data);
+    public function compare_files(&$data);
 }

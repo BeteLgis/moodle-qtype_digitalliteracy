@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="question/type/digitalliteracy/db" VERSION="20200718" COMMENT="XMLDB file for Moodle question/type/digitalliteracy"
+<XMLDB PATH="question/type/digitalliteracy/db" VERSION="20200720" COMMENT="XMLDB file for Moodle question/type/digitalliteracy"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../../lib/xmldb/xmldb.xsd"
 >
@@ -8,16 +8,23 @@
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Foreign key linking to the question table."/>
-        <FIELD NAME="responseformat" TYPE="char" LENGTH="16" NOTNULL="true" DEFAULT="excel" SEQUENCE="false" COMMENT="The type of response format file (files)."/>
-        <FIELD NAME="attachmentsrequired" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="The number of attachments that should be required"/>
-        <FIELD NAME="filetypeslist" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="What attachment file type a student is allowed to include with their response. * or empty means unlimited."/>
-        <FIELD NAME="hastemplatefile" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Indicates if a question has a template file"/>
-        <FIELD NAME="firstcoef" TYPE="number" LENGTH="4" NOTNULL="true" DEFAULT="33" SEQUENCE="false" DECIMALS="1" COMMENT="First coefficient"/>
-        <FIELD NAME="secondcoef" TYPE="number" LENGTH="4" NOTNULL="true" DEFAULT="33" SEQUENCE="false" DECIMALS="1" COMMENT="Second coefficient"/>
-        <FIELD NAME="thirdcoef" TYPE="number" LENGTH="4" NOTNULL="true" DEFAULT="34" SEQUENCE="false" DECIMALS="1" COMMENT="Third coefficient"/>
-        <FIELD NAME="binarygrading" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Is question binary graded"/>
-        <FIELD NAME="showmistakes" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Whether to show the auto-grade result to the students or not"/>
-        <FIELD NAME="checkbutton" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Show the check button or not"/>
+        <FIELD NAME="responseformat" TYPE="char" LENGTH="16" NOTNULL="true" DEFAULT="excel" SEQUENCE="false" COMMENT="The type of answer (and response file type)."/>
+        <FIELD NAME="attachmentsrequired" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="The number of attachments that should be required."/>
+        <FIELD NAME="filetypeslist" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="What attachment file type a student is allowed to include with their response (empty means unlimited)."/>
+        <FIELD NAME="hastemplatefile" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Indicates if a question has a template file."/>
+        <FIELD NAME="firstcoef" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="100" SEQUENCE="false" COMMENT="First coefficient (value)."/>
+        <FIELD NAME="secondcoef" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Second coefficient (format - style)."/>
+        <FIELD NAME="thirdcoef" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Third coefficient (enclosures)."/>
+        <FIELD NAME="binarygrading" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Is question binary graded?"/>
+        <FIELD NAME="showmistakes" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Whether to show the auto-grade result to the students or not."/>
+        <FIELD NAME="checkbutton" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Show the check button or not."/>
+        <FIELD NAME="excludetemplate" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Exclude from graduation all data (text) provided in the template."/>
+        <FIELD NAME="paramvalue" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Consider the value in comparison."/>
+        <FIELD NAME="paramtype" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Consider the data type in comparison."/>
+        <FIELD NAME="parambold" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Consider the bold text in comparison."/>
+        <FIELD NAME="paramfillcolor" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Consider the fill color in comparison."/>
+        <FIELD NAME="paramcharts" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Consider charts in comparison."/>
+        <FIELD NAME="paramimages" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Consider images in comparison."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>

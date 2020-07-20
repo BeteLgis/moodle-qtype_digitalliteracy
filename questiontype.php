@@ -17,6 +17,17 @@ class qtype_digitalliteracy extends question_type {
         return array('attachments', '_mistakes');
     }
 
+    public function extra_question_fields()
+    {
+        return array('qtype_digitalliteracy_option',
+            'responseformat', 'attachmentsrequired',
+            'hastemplatefile', 'firstcoef', 'secondcoef',
+            'thirdcoef', 'binarygrading', 'showmistakes',
+            'checkbutton', 'excludetemplate', 'paramvalue',
+            'paramtype', 'parambold', 'paramfillcolor',
+            'paramcharts', 'paramimages');
+    }
+
     /**
      * Abstract function implemented by each question type. It runs all the code
      * required to set up and save a question of any type for testing purposes.
@@ -51,28 +62,15 @@ class qtype_digitalliteracy extends question_type {
      * @param $formdata object This holds the information from the editing form, it is not a standard question object. */
     public function save_question_options($formdata) {
         global $DB, $USER;
+        parent::save_question_options($formdata);
 
         $options = $DB->get_record('qtype_digitalliteracy_option', array('questionid' => $formdata->id));
-        if (!$options) {
-            $options = new stdClass();
-            $options->questionid = $formdata->id;
-            $options->id = $DB->insert_record('qtype_digitalliteracy_option', $options);
-        }
 
-        $options->responseformat = $formdata->responseformat;
-        $options->attachmentsrequired = $formdata->attachmentsrequired;
         if (!isset($formdata->filetypeslist)) {
             $options->filetypeslist = "";
         } else {
             $options->filetypeslist = $formdata->filetypeslist;
         }
-        $options->hastemplatefile = $formdata->hastemplatefile;
-        $options->firstcoef = $formdata->firstcoef;
-        $options->secondcoef = $formdata->secondcoef;
-        $options->thirdcoef = $formdata->thirdcoef;
-        $options->binarygrading = $formdata->binarygrading;
-        $options->showmistakes = $formdata->showmistakes;
-        $options->checkbutton = $formdata->checkbutton;
 
         $DB->update_record('qtype_digitalliteracy_option', $options);
 
@@ -101,18 +99,8 @@ class qtype_digitalliteracy extends question_type {
      * @param $questiondata object the question data loaded from the database. */
     protected function initialise_question_instance(question_definition $question, $questiondata) {
         parent::initialise_question_instance($question, $questiondata);
-        $question->responseformat = $questiondata->options->responseformat;
-        $question->attachmentsrequired = $questiondata->options->attachmentsrequired;
         $filetypesutil = new \core_form\filetypes_util();
         $question->filetypeslist = $filetypesutil->normalize_file_types($questiondata->options->filetypeslist);
-
-        $question->hastemplatefile = $questiondata->options->hastemplatefile;
-        $question->firstcoef = $questiondata->options->firstcoef;
-        $question->secondcoef = $questiondata->options->secondcoef;
-        $question->thirdcoef = $questiondata->options->thirdcoef;
-        $question->binarygrading = $questiondata->options->binarygrading;
-        $question->showmistakes =  $questiondata->options->showmistakes;
-        $question->checkbutton =  $questiondata->options->checkbutton;
     }
     /** Deletes the question-type specific data when a question is deleted.
      * @Overrides question_type::delete_question
@@ -151,7 +139,7 @@ class qtype_digitalliteracy extends question_type {
      */
     public function attachments_filetypes_option() {
         return array(
-            'onlytypes' => ['spreadsheet', 'presentation']
+            'onlytypes' => ['ods', 'xlsx', 'xls', 'csv', 'pptx', 'odp']
         );
     }
 
@@ -160,8 +148,6 @@ class qtype_digitalliteracy extends question_type {
      */
     public function attachment_filesize_max() {
         return array(
-            1024 => '1 kB',
-            10240 => '10 kB',
             102400 => '100 kB',
             1048576 => '1 MB',
             10485760 => '10 MB',

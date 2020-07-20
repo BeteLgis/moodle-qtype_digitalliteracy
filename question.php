@@ -13,22 +13,6 @@ require_once($CFG->dirroot . '/question/behaviour/interactive_for_digitalliterac
  */
 class qtype_digitalliteracy_question extends question_graded_automatically {
 
-    /** @var string question format excel, powerpoint or word. */
-    public $responseformat;
-    /** @var int The number of attachments required for a response to be complete. */
-    public $attachmentsrequired;
-    /** @var array The string array of file types accepted upon file submission. */
-    public $filetypeslist;
-
-    public $firstcoef;
-    public $secondcoef;
-    public $thirdcoef;
-
-    public $hastemplatefile;
-    public $binarygrading;
-    public $showmistakes;
-    public $checkbutton;
-
     public function make_behaviour(question_attempt $qa, $preferredbehaviour) {
         return new qbehaviour_interactive_for_digitalliteracy($qa, $preferredbehaviour);
     }
@@ -37,8 +21,7 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
      * The parameter name has question_attempt::get_field_prefix() automatically prepended.
      * @Overrides question_definition::get_expected_data
      */
-    public function get_expected_data()
-    {
+    public function get_expected_data() {
         return array('attachments' => question_attempt::PARAM_FILES);
     }
     /** What data would need to be submitted to get this question correct.
@@ -155,13 +138,13 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
      */
     public function grade_response(array $response)
     {
-        $data = array();
-        $data['contextid'] = $this->contextid;
-        $data['itemid'] = $this->id;
-        $data['coef_value'] = $this->firstcoef;
-        $data['coef_format'] = $this->secondcoef;
-        $data['coef_enclosures'] = $this->thirdcoef;
-        $data['responseformat'] = $this->responseformat;
+        $data = new stdClass();
+        foreach (array('contextid', 'id', 'firstcoef', 'secondcoef','thirdcoef',
+                     'responseformat', 'hastemplatefile', 'excludetemplate',
+                     'paramvalue', 'paramtype', 'parambold',
+                     'paramfillcolor', 'paramcharts', 'paramimages') as $value) {
+            $data->$value = $this->$value;
+        }
         $comparator = new qtype_digitalliteracy_comparator();
         $result = $comparator->grade_response($response, $data);
         if (!empty($result['error']))
