@@ -12,34 +12,25 @@ class qtype_digitalliteracy_comparator
      * @return array|bool|float|int|string
      */
     public function grade_response(array $response, &$data) {
-        $request_directory = $this->create_directory();
-        if (is_array($request_directory))
-            return $request_directory;
-//        try {
-            $this->copy_files($data, $response, $request_directory);
-            $data->request_directory = $request_directory;
-            $result = $this->process_comparison($data);
-//        } catch (Exception $ex) {
-//            return array('error' => $ex->getMessage());
-//        }
-        return $result;
-    }
-
-    private function create_directory() {
         try {
             $request_directory = make_request_directory();
+            $data->flag ? $this->copy_files_validation($data, $response, $request_directory) :
+                $this->copy_files($data, $response, $request_directory);
+            $data->request_directory = $request_directory;
+            $comparator = self::switch($data->responseformat);
+            $result = $comparator->compare_files($data);
         } catch (Exception $ex) {
             return array('error' => $ex->getMessage());
         }
-        return $request_directory;
+        return $result;
     }
 
     private function copy_files(&$data, array $response, $dir) {
         $data->source_path = $this->get_filearea_files('source', $data->contextid,
-            $data->id, 'sourcefiles', $dir)[0];
+            'qtype_digitalliteracy', 'sourcefiles', $data->id, $dir)[0];
         if ($data->hastemplatefile && $data->excludetemplate) {
             $data->template_path = $this->get_filearea_files('template', $data->contextid,
-                $data->id, 'templatefiles', $dir)[0];
+                'qtype_digitalliteracy', 'templatefiles', $data->id, $dir)[0];
         }
         $files = $response['attachments']->get_files();
         $data->response_path = $this->get_paths_from_files('response',
@@ -47,11 +38,21 @@ class qtype_digitalliteracy_comparator
         $data->mistakes_name = array_values($files)[0]->get_filename();
     }
 
-    public function get_filearea_files($name, $contextid, $itemid, $filearea, $dir)
-    {
+    private function copy_files_validation(&$data, array $response, $dir) {
+        $files = $response['attachments']->get_files();
+        $data->source_path = $this->get_paths_from_files('source', $files, $dir)[0];
+        if ($data->hastemplatefile && $data->excludetemplate) {
+            $data->template_path = $this->get_filearea_files('template', $data->contextid,
+                'user', 'draft', $data->templatefiles, $dir)[0];
+        }
+        $data->response_path = $this->get_paths_from_files('response', $files, $dir)[0];;
+    }
+
+    public function get_filearea_files($name, $contextid, $component,
+                                       $filearea, $itemid, $dir) {
         $fs = get_file_storage();
-        $files = $fs->get_area_files($contextid, 'qtype_digitalliteracy',
-            $filearea, $itemid, 'filename', false);
+        $files = $fs->get_area_files($contextid, $component, $filearea,
+            $itemid, 'filename', false);
         return $this->get_paths_from_files($name, $files, $dir);
     }
 
@@ -70,23 +71,10 @@ class qtype_digitalliteracy_comparator
             $fullpath = $dir.'\\'.$name.'.'.$ext;
             if ($file->copy_content_to($fullpath))
                 $result[] = $fullpath;
+            else
+                throw new Exception(get_string('error_filecopy', 'qtype_digitalliteracy', $filename));
         }
         return $result;
-    }
-
-    public function process_comparison(&$data) {
-        switch ($data->responseformat)
-        {
-            case 'excel':
-                $comparator = new qtype_digitalliteracy_excel_tester();
-                break;
-            case 'powerpoint':
-                $comparator = new qtype_digitalliteracy_powerpoint_tester();
-                break;
-        }
-        if (!isset($comparator))
-            throw new dml_read_exception('Unexpected error');
-        return $comparator->compare_files($data);
     }
 
     public static function generate_question_file_saver($name, $path) {
@@ -102,12 +90,71 @@ class qtype_digitalliteracy_comparator
         $filerecord->filepath = '/';
         $filerecord->filename = $name;
         $fs->create_file_from_pathname($filerecord, $path);
-//        var_dump($fs->get_area_files($filerecord->contextid,$filerecord->component,
-//            $filerecord->filearea, $filerecord->itemid));
         return new question_file_saver($draftitemid, 'question', 'response_mistakes');
+    }
+
+    public static function switch($responseformat) {
+        switch ($responseformat)
+        {
+            case 'excel':
+                $comparator = new qtype_digitalliteracy_excel_tester();
+                break;
+            case 'powerpoint':
+                $comparator = new qtype_digitalliteracy_powerpoint_tester();
+                break;
+        }
+        if (!isset($comparator))
+            throw new dml_read_exception('Unexpected error');
+        return $comparator;
+    }
+
+    /**
+     * @param $comparator qtype_digitalliteracy_compare_interface
+     * @param $file stored_file
+     */
+    public function validate_file($file, $comparator, $whitelist, $dir) {
+        $filetypesutil = new \core_form\filetypes_util();
+        $filename = $file->get_filename();
+        if (!$filetypesutil->is_allowed_file_type($filename, $whitelist)) {
+            return get_string('error_incorrectextension', 'qtype_digitalliteracy', $file);
+        }
+        $fullpath = $dir.'\\'. $filename;
+        if ($file->copy_content_to($fullpath))
+            $result[] = $fullpath;
+        else
+            throw new Exception(get_string('error_filecopy', 'qtype_digitalliteracy', $filename));
+        return $comparator->validate_file($fullpath, $filename);
+    }
+
+    public function validate_files($files, $responseformat, $filetypeslist, $attachmentsrequired) {
+        try {
+            $comparator = self::switch($responseformat);
+            $dir = make_request_directory();
+        } catch (Exception $ex) {
+            return $ex->getMessage();
+        }
+
+        if (($attachcount = count($files)) > 0) {
+            $result = array();
+            $filetypesutil = new \core_form\filetypes_util();
+            $whitelist = $filetypesutil->normalize_file_types($filetypeslist);
+            foreach ($files as $file) {
+                $result[] = $this->validate_file($file, $comparator, $whitelist, $dir);
+            }
+            if (count($result) > 0) {
+                return implode('\n', $result);
+            }
+        }
+
+        if ($attachcount < $attachmentsrequired) {
+            return get_string('insufficientattachments',
+                'qtype_digitalliteracy', $attachmentsrequired);
+        }
+        return '';
     }
 }
 
 interface qtype_digitalliteracy_compare_interface {
     public function compare_files(&$data);
+    public function validate_file($filepath, $filename);
 }

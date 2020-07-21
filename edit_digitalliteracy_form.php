@@ -3,7 +3,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 //require_once($CFG->dirroot.'/question/type/digitalliteracy/slider.php');
-
+require_once($CFG->dirroot.'/question/type/digitalliteracy/question.php');
 //MoodleQuickForm::registerElementType('slider', "$CFG->dirroot/question/type/digitalliteracy/slider.php",
 //    'MoodleQuickForm_slider');
 /** class for rendering (and outputting) question edit form */
@@ -101,24 +101,14 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         if (empty($question->options)) {
             return $question;
         }
-
-        $extraquestionfields = (new qtype_digitalliteracy())->extra_question_fields();
-        if (is_array($extraquestionfields)) {
-            array_shift($extraquestionfields);
-            foreach ($extraquestionfields as $field) {
-                $question->$field = $question->options->$field;
-            }
-        }
-        $question->filetypeslist = $question->options->filetypeslist;
-
-//        $this->fileoptions; TODO
-        // prepare files
-        $filecontext = context::instance_by_id($question->contextid, MUST_EXIST);
         foreach (array('sourcefiles', 'templatefiles') as $filearea) {
-            file_prepare_standard_filemanager($question, $filearea,
-                array('subdirs' => false), $filecontext, 'qtype_digitalliteracy',
-                $filearea, $question->id);
+            $draftid_editor = 0;
+            file_prepare_draft_area($draftid_editor, $question->contextid, 'qtype_digitalliteracy',
+                $filearea, $question->id, array('subdirs' => false));
+            $question->{$filearea . '_filemanager'} = $draftid_editor;
         }
+        $this->load_formdata_into_question($question, false);
+        // prepare files
         return $question;
     }
 
@@ -170,29 +160,77 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
             }
         }
 
-//        $this->validateFiles($fromform, $errors); TODO
+        if (empty($errors))
+            $this->validatedata($fromform, $errors);
 
         return $errors;
     }
 
-    private function validateFiles($fromform, $errors) {
-        switch ($this->question->options->responseformat)
-        {
-            case 'excel':
-                $comparator = new qtype_digitalliteracy_excel_tester();
-                break;
-            case 'powerpoint':
-                $comparator = new qtype_digitalliteracy_powerpoint_tester();
-                break;
-            default :
-//                throw new dml_read_exception('qtype_digitalliteracy_option');
-                return array(0, question_state::$needsgrading);
-        }
-        $dir = make_request_directory();
-        $sources = $comparator->validate_filearea($this->question, 'sourcefiles', $dir);
-        $templates = $comparator->validate_filearea($this->question, 'templatefiles', $dir);
+    private function validatedata($fromform, &$errors) {
+        global $USER;
+        $error_types = $this->error_interpreter();
+        $question = $this->load_formdata_into_question($fromform, true);
+        $question->contextid = context_user::instance($USER->id)->id;
+        $question->templatefiles = $fromform['templatefiles_filemanager'];
 
-        throw new Exception("a");
+        $response = array('attachments' => new question_file_saver($fromform['sourcefiles_filemanager'],
+            'qtype_digitalliteracy', 'sourcefiles'), 'flag' => '1');
+        $flag = false;
+        if (($error = $question->validate_response($response)) !== '') {
+            $errors[$error_types['sourcefiles']] = $error;
+            $flag = true;
+        }
+        if ($fromform['hastemplatefile'] && ($error = $this->validate_files($fromform, 'templatefiles_filemanager')) !== '') {
+            $errors[$error_types['templatefiles']] = $error;
+            $flag = true;
+        }
+        if ($flag)
+            return;
+
+        $result = $question->grade_response($response);
+        list($fraction, $state) = $result;
+        if ($fraction != 1.0) {
+            $errors[$error_types['']] = count($result) > 2 ? $result[2]['_error']:
+                get_string('validationerror', 'qtype_digitalliteracy');
+        }
+    }
+
+    private function error_interpreter() {
+        return array('templatefiles' => 'templatefiles_filemanager',
+            'sourcefiles' => 'sourcefiles_filemanager',
+            '' => 'commonsettings'); // '' == NULL check https://www.php.net/manual/en/language.types.array.php
+    }
+
+    private function load_formdata_into_question(&$question, $newquestion) {
+        $extraquestionfields = (new qtype_digitalliteracy())->extra_question_fields();
+        if (is_array($extraquestionfields)) {
+            array_shift($extraquestionfields);
+            if ($newquestion) {
+                $res = new qtype_digitalliteracy_question();
+                foreach ($extraquestionfields as $field) {
+                    $res->$field = $question[$field];
+                }
+                $res->filetypeslist = $question['filetypeslist'];
+                return $res;
+            } else {
+                foreach ($extraquestionfields as $field) {
+                    $question->$field = $question->options->$field;
+                }
+                $question->filetypeslist = $question->options->filetypeslist;
+            }
+        }
+        return '';
+    }
+
+    private function validate_files($fromform, $element) {
+        global $USER;
+        $fs = get_file_storage();
+        $contextid = context_user::instance($USER->id)->id;
+        $files = $fs->get_area_files($contextid, 'user', 'draft',
+            $fromform[$element], 'filename', false);
+        $comparator = new qtype_digitalliteracy_comparator();
+        return $comparator->validate_files($files, $fromform['responseformat'],
+            $fromform['filetypeslist'], $fromform['attachmentsrequired']);
     }
     /** Override this in the subclass to question type name.
      * @Overrides question_edit_form::qtype */

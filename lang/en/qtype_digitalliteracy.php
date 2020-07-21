@@ -32,6 +32,12 @@ $string['commonsettings_help'] = 'Exclude template - exclude from graduation all
 $string['validatecoef'] = 'Enter a float in range [0, 100], please!';
 $string['notahunred'] = 'Sum is not a hundred';
 $string['tickacheckbox'] = 'Tick one setting at least';
+$string['validationerror'] = 'Wrong comparison parameters (it\'s impossible to get max mark)';
+
+// file errors
+$string['error_noreader'] = 'Can\'t read file {$a->file}. \n Message: {$a->msg}';
+$string['error_incorrectextension'] = 'File with wrong extension: {$a}';
+$string['error_filecopy'] = 'Internal error: failed to copy a file {$a} into temporary directory needed for analysis';
 
 // questiontype.php
 $string['excel'] = 'Excel';
@@ -41,7 +47,6 @@ $string['powerpoint'] = 'Power point';
 $string['answered'] = 'You uploaded: {$a}';
 $string['notanswered'] = 'You haven\'t uploaded any file.';
 $string['mustrequirefewer'] = 'You cannot require more attachments than you allow.';
-$string['wrongfiles'] = 'Disallowed file name(s): {$a}';
 $string['insufficientattachments'] = 'Not enough attachments, {$a} required.';
 $string['unknownerror'] = 'An unexpected error occurred. Please, try again shortly.';
 

@@ -14,6 +14,21 @@ require_once($CFG->dirroot.'/question/type/digitalliteracy/question.php');
 /** Excel file (spreadsheet) comparator */
 class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compare_interface
 {
+    public function validate_file($filepath, $filename) {
+        $res = new stdClass();
+        try {
+            $reader = IOFactory::createReaderForFile($filepath);
+            $spreadsheet = $reader->load($filepath);
+            if ($spreadsheet->getSheetCount() == 0)
+                throw new Exception("Spreadsheet has 0 sheets.");
+            $spreadsheet->getSheet(0)->getCellCollection();
+        } catch (Exception $ex) {
+            $res->file = $filename;
+            $res->msg = $ex;
+            return get_string('error_noreader', 'qtype_digitalliteracy', $res);
+        }
+        return '';
+    }
     /** Main comparison method
      * @return array {@link question_file_saver} and int fraction
      * @throws \PhpOffice\PhpSpreadsheet\Exception
@@ -35,7 +50,8 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
 
         $fraction = $this->compare_with_coefficients($spreadsheet_response,
             $spreadsheet_source, $spreadsheet_template, $data);
-
+        if ($data->flag)
+            return array('fraction' => $fraction);
         $mistakes_name = 'Mistakes_' . $data->mistakes_name;
         $mistakes_path = $data->request_directory . '\\' . $mistakes_name;
         $writer = IOFactory::createWriter($spreadsheet_response, $filetype);
@@ -103,7 +119,7 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
             return false;
 
         $temp = 0;
-        $flag = 0;
+        $counter = 0;
         foreach ($functions as $function) {
             $res = $this->compare_cells($function['params'], $cell_1, $cell_2, $cell_3);
             if ($res) {
@@ -111,10 +127,10 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
                 $temp++;
             }
             if ($res < 0) {
-                $flag++;
+                $counter++;
             }
         }
-        if ($flag === count($functions))
+        if ($counter === count($functions))
             return true;
         $result->cell_total++;
         return $temp === count($functions);
@@ -188,20 +204,8 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
             }
         }
     }
-    /** Files validation */
-    public function validate_filearea($question, $filearea, $dir)
-    {
-        $damaged = array();
-        $files = qtype_digitalliteracy_question::get_filearea_files($question, $filearea, $dir);
-        var_dump($files);
-        foreach ($files as $file) {
-            if ($this->validate_file($file))
-                $damaged[] = $file;
-        }
-        return $damaged;
-    }
 
-    public function validate_file($file)
+    public function validate_filea($file)
     {
         // $ext = strtolower(substr($file, strrpos($file, '.') + 1));
         try {

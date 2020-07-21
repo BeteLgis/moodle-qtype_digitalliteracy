@@ -85,37 +85,16 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
         return $this->validate_response($response) == '';
     }
 
-    private function validate_response(array $response) {
-        $hasattachments = array_key_exists('attachments', $response)
-            && $response['attachments'] instanceof question_response_files;
-
-        // Determine the number of attachments present.
-        if ($hasattachments) {
-            // Check the filetypes.
-            $filetypesutil = new \core_form\filetypes_util();
-            $whitelist = $filetypesutil->normalize_file_types($this->filetypeslist);
-            $wrongfiles = array();
+    public function validate_response(array $response) {
+        if (array_key_exists('attachments', $response)
+            && $response['attachments'] instanceof question_response_files) {
             $files = $response['attachments']->get_files();
-            $attachcount = count($files);
-            foreach ($files as $file) {
-                if (!$filetypesutil->is_allowed_file_type($file->get_filename(), $whitelist)) {
-                    $wrongfiles[] = $file->get_filename();
-                }
-            }
-            if (count($wrongfiles) > 0) { // At least one filetype is wrong.
-                $result = implode(', ', $wrongfiles);
-                return get_string('wrongfiles', 'qtype_digitalliteracy', $result);
-            }
-        } else {
-            $attachcount = 0;
-        }
+        } else
+            $files = array();
 
-        if ($attachcount < $this->attachmentsrequired) {
-            return get_string('insufficientattachments',
-                'qtype_digitalliteracy', $this->attachmentsrequired);
-        }
-
-        return '';  // All good.
+        $comparator = new qtype_digitalliteracy_comparator();
+        return $comparator->validate_files($files, $this->responseformat,
+            $this->filetypeslist, $this->attachmentsrequired);
     }
     /** In situations where is_gradable_response() returns false,
      * this method should generate a description of what the problem is.
@@ -131,6 +110,14 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
             return get_string('unknownerror', 'qtype_digitalliteracy');
         }
     }
+
+    public static function response_data() {
+        return array('contextid', 'id', 'firstcoef', 'secondcoef','thirdcoef',
+                     'responseformat', 'hastemplatefile', 'excludetemplate',
+                     'paramvalue', 'paramtype', 'parambold',
+                     'paramfillcolor', 'paramcharts', 'paramimages');
+    }
+
     /** Grade a response to the question, returning a fraction between get_min_fraction()
      * and get_max_fraction(), and the corresponding question_state right, partial or wrong.
      * @Implements question_automatically_gradable::grade_response
@@ -139,21 +126,24 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
     public function grade_response(array $response)
     {
         $data = new stdClass();
-        foreach (array('contextid', 'id', 'firstcoef', 'secondcoef','thirdcoef',
-                     'responseformat', 'hastemplatefile', 'excludetemplate',
-                     'paramvalue', 'paramtype', 'parambold',
-                     'paramfillcolor', 'paramcharts', 'paramimages') as $value) {
+        $data->flag = false;
+        foreach (self::response_data() as $value) {
             $data->$value = $this->$value;
+        }
+        if (array_key_exists('flag', $response)) {
+            $data->flag = true;
+            $data->templatefiles = $this->templatefiles;
         }
         $comparator = new qtype_digitalliteracy_comparator();
         $result = $comparator->grade_response($response, $data);
         if (!empty($result['error']))
-            return array(0, question_state::$invalid);
+            return array(0, question_state::$invalid, array('_error' => $result['error']));
         $fraction = $result['fraction'];
         if ($this->binarygrading) {
             $fraction = $fraction < 1 ? 0 : 1;
         }
-        return array($fraction, question_state::graded_state_for_fraction($fraction),
+        return $data->flag ? array($fraction, question_state::graded_state_for_fraction($fraction)) :
+            array($fraction, question_state::graded_state_for_fraction($fraction),
             array('_mistakes' => $result['file_saver']));
     }
 
