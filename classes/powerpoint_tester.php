@@ -6,14 +6,14 @@ use PhpOffice\PhpPresentation\Style\Color;
 use PhpOffice\PhpPresentation\Style\Alignment;
 system('pip install python-pptx');
 
-class qtype_digitalliteracy_powerpoint_tester implements qtype_digitalliteracy_comparator
+class qtype_digitalliteracy_powerpoint_tester //implements qtype_digitalliteracy_comparator
 {
     public function validate()
     {
         // TODO: Implement validate() method.
     }
 
-    public function compareFiles($source, $sample, $isBinary)
+    public function compareFiles($source, $sample, $isBinary = false)
     {
         // TODO validation!
         $samplePptx = IOFactory::load($source);
@@ -239,6 +239,12 @@ class qtype_digitalliteracy_powerpoint_tester implements qtype_digitalliteracy_c
             return array(0,0);
         }
         $scored = 0;
+        if($sample->getBulletColor() == $test->getBulletColor())
+            $scored += 1;
+
+        if($sample->getBulletFont() == $test->getBulletFont())
+            $scored += 1;
+
         if($sample->getBulletChar() == $test->getBulletChar())
             $scored += 1;
         if($sample->getBulletType() == $test->getBulletType())
@@ -256,7 +262,7 @@ class qtype_digitalliteracy_powerpoint_tester implements qtype_digitalliteracy_c
                 return array(0,1);
         }
 
-        return array($scored, 4);
+        return array($scored, 6);
     }
 
     private function compareParagraphsBullets($samplePptx, $analysPptx, $isBinary){
@@ -291,4 +297,13 @@ class qtype_digitalliteracy_powerpoint_tester implements qtype_digitalliteracy_c
         }
         return array($scored,$max);
     }
+
+    public function TestingFunc($source, $sample){
+        $oReader = IOFactory::createReader('PowerPoint2007');
+        $pres = $oReader->load($source);
+        $analysPptx = $oReader->load($sample);
+        $this->compareParagraphsBullets($pres,$analysPptx);
+
+    }
 }
+
