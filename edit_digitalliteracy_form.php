@@ -179,15 +179,16 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
             $errors[$error_types['sourcefiles']] = $error;
             $flag = true;
         }
-        if ($fromform['hastemplatefile'] && ($error = $this->validate_files($fromform,
+        if ($question->hastemplatefile && ($error = $this->validate_files($fromform,
                 'templatefiles_filemanager')) !== '') {
-            $question->templatefiles = $fromform['templatefiles_filemanager'];
             $errors[$error_types['templatefiles']] = $error;
             $flag = true;
         }
         if ($flag)
             return;
 
+        if ($question->hastemplatefile && $question->excludetemplate)
+            $question->templatefiles = $fromform['templatefiles_filemanager'];
         $result = $question->grade_response($response);
         list($fraction, $state) = $result;
         if ($fraction != 1.0) {

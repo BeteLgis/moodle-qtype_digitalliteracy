@@ -39,7 +39,7 @@ class qtype_digitalliteracy_comparator
     private function copy_files_validation(&$data, array $response, $dir) {
         $files = $response['attachments']->get_files();
         $data->source_path = $this->get_paths_from_files('source', $files, $dir)[0];
-        if ($data->hastemplatefile && $data->excludetemplate) {
+        if (isset($data->templatefiles)) {
             $data->template_path = $this->get_filearea_files('template', $data->contextid,
                 'user', 'draft', $data->templatefiles, $dir)[0];
         }
@@ -110,12 +110,10 @@ class qtype_digitalliteracy_comparator
      * @param $comparator qtype_digitalliteracy_compare_interface
      * @param $file stored_file
      */
-    public function validate_file($file, $comparator, $whitelist, $dir) {
-        $filetypesutil = new \core_form\filetypes_util();
+    public function validate_file($file, $filetypesutil, $comparator, $whitelist, $dir) {
         $filename = $file->get_filename();
-        if (!$filetypesutil->is_allowed_file_type($filename, $whitelist)) {
-            return get_string('error_incorrectextension', 'qtype_digitalliteracy', $file);
-        }
+        if (!$filetypesutil->is_allowed_file_type($filename, $whitelist))
+            return get_string('error_incorrectextension', 'qtype_digitalliteracy', $filename);
         $fullpath = $dir.'\\'. $filename;
         if ($file->copy_content_to($fullpath))
             $result[] = $fullpath;
@@ -132,22 +130,26 @@ class qtype_digitalliteracy_comparator
             return $ex->getMessage();
         }
 
+        $attachcount = count($files);
+
+        if ($attachcount != $attachmentsrequired) {
+            return get_string('insufficientattachments',
+                'qtype_digitalliteracy', $attachmentsrequired);
+        }
+
         if (($attachcount = count($files)) > 0) {
             $result = array();
             $filetypesutil = new \core_form\filetypes_util();
             $whitelist = $filetypesutil->normalize_file_types($filetypeslist);
             foreach ($files as $file) {
-                $result[] = $this->validate_file($file, $comparator, $whitelist, $dir);
+                $result[] = $this->validate_file($file, $filetypesutil,
+                    $comparator, $whitelist, $dir);
             }
             if (count($result) > 0) {
-                return implode('\n', $result);
+                return implode(' | ', $result);
             }
         }
 
-        if ($attachcount < $attachmentsrequired) {
-            return get_string('insufficientattachments',
-                'qtype_digitalliteracy', $attachmentsrequired);
-        }
         return '';
     }
 }

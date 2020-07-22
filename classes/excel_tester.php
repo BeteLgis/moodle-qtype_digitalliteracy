@@ -24,7 +24,7 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
             $spreadsheet->getSheet(0)->getCellCollection();
         } catch (Exception $ex) {
             $res->file = $filename;
-            $res->msg = $ex;
+            $res->msg = $ex->getMessage();
             return get_string('error_noreader', 'qtype_digitalliteracy', $res);
         }
         return '';
@@ -39,6 +39,7 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
         // preparing files
         $filetype = IOFactory::identify($data->response_path);
         $reader = IOFactory::createReader($filetype);
+        $reader->setReadEmptyCells(false);
         $data->thirdcoef > 0 ? $reader->setIncludeCharts(true) : $reader->setIncludeCharts(false);
 //        $data->coef_format == 0 && $data->coef_enclosures == 0 ? $reader->setReadDataOnly(true) :
 //            $reader->setReadDataOnly(false);
@@ -73,13 +74,13 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
         $result = new stdClass();
         $result->value_matches = 0; $result->style_matches = 0; $result->cell_total = 0;
         $result->chart_matches = 0; $result->chart_total = 0;
-        $functions = $this->create_compare_test($data);
+        $types = $this->get_compare_types($data);
 
         foreach ($cell_collection as $coordinate => $index) {
             $cell_source = $source->getSheet(0)->getCell($coordinate, false);
             $cell_response = $response->getSheet(0)->getCell($coordinate, true);
             $cell_template = isset($template) ? $template->getSheet(0)->getCell($coordinate, false) : null;
-            if (!$this->compare($functions, $result, $cell_source, $cell_response, $cell_template))
+            if (!$this->compare($types, $result, $cell_source, $cell_response, $cell_template) && !$data->flag)
                 $cell_response->getStyle()->getFill()->setFillType(
                     \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('ff0000');
         }
@@ -91,7 +92,7 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
     }
 
 
-    private function create_compare_test(&$data) {
+    private function get_compare_types(&$data) {
         $res = array();
         if ($data->firstcoef) {
             $items = array();
@@ -100,7 +101,7 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
             if ($data->paramtype)
                 $items[] = 'compare_datatype';
             $res[] = array('matches' => 'value_matches',
-                'params' => $items);
+                'criterions' => $items);
         }
         if ($data->secondcoef) {
             $items = array();
@@ -109,54 +110,57 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
             if ($data->paramfillcolor)
                 $items[] = 'compare_fillcolor';
             $res[] = array('matches' => 'style_matches',
-                'params' => $items);
+                'criterions' => $items);
         }
         return $res;
     }
 
-    /**
-     * @param $cell_source Cell
-     */
-    private function compare(array $functions, &$result, $cell_source, $cell_response, $cell_template) {
+    private function compare(array $types, &$result, $cell_source, $cell_response, $cell_template) {
         if (!isset($cell_source))
             return false;
 
-        $temp = 0;
-        $counter = 0;
-        foreach ($functions as $function) {
-            $res = $this->compare_cells($function['params'], $cell_source, $cell_response, $cell_template);
-            if ($res < 0) {
-                $counter++;
-                break;
-            }
-            if ($res === true) {
-                $result->{$function['matches']}++;
-                $temp++;
-            }
-        }
-        if ($counter === count($functions))
-            return true;
-        $result->cell_total++;
-        return $temp === count($functions);
-    }
-
-    /** Cell value comparison */
-    function compare_cells(array $functions, $cell_source, $cell_response, $cell_template) {
+        $res = $this->compare_cells($types, $cell_source, $cell_response);
         if (isset($cell_template)) {
-            if ($this->helper($functions, $cell_source, $cell_template))
-                if ($this->helper($functions, $cell_source, $cell_response))
-                    return -1; // TODO logical???
+            if ($res['equal'] && $this->compare_cells($types, $cell_source, $cell_template)['equal'])
+                return true;
         }
-        return $this->helper($functions, $cell_source, $cell_response);
+        foreach ($types as $type) {
+            if ($res[$type['matches']])
+                $result->{$type['matches']}++;
+        }
+        $result->cell_total++;
+        return $res['equal'];
     }
 
-    private function helper(array &$functions, Cell $cell_1, Cell $cell_2) {
+    /**
+     * @param array $types represents different types of a cell comparison (text or styles)
+     * Cells are equal if all criterions of all significant types [significance > 0] are equal.
+     */
+    private function compare_cells(array $types, Cell $cell_1, Cell $cell_2) {
         $temp = 0;
-        foreach ($functions as $function) {
-            if (call_user_func(array($this, $function), $cell_1, $cell_2))
+        $result = array();
+        foreach ($types as $type) {
+            $result[$type['matches']] = false;
+            if ($this->compare_cells_by_type($type['criterions'], $cell_1, $cell_2)) {
+                $temp++;
+                $result[$type['matches']] = true;
+            }
+        }
+        $result['equal'] = $temp === count($types);
+        return $result;
+    }
+
+    /**
+     * @param array $criterions [value, data type or bold, fill color]
+     * @return bool True if all criterions of the current comparison type [text, styles] are equal, false otherwise.
+     */
+    private function compare_cells_by_type(array &$criterions, Cell $cell_1, Cell $cell_2) {
+        $temp = 0;
+        foreach ($criterions as $criterion) {
+            if (call_user_func(array($this, $criterion), $cell_1, $cell_2))
                 $temp++;
         }
-        return $temp === count($functions);
+        return $temp === count($criterions);
     }
 
     function compare_value(Cell $cell_1, Cell $cell_2) {
