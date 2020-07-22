@@ -6,8 +6,6 @@ require_once($CFG->dirroot . '/question/type/digitalliteracy/vendor/autoload.php
 /** Common interface for file comparison */
 class qtype_digitalliteracy_comparator
 {
-//    public function validate_filearea($question, $filearea, $dir); // file validation (check whether it is correctly loaded)
-//                                // number of pages (slides) not 0!!!!
     /**
      * @return array|bool|float|int|string
      */

@@ -171,7 +171,6 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         $error_types = $this->error_interpreter();
         $question = $this->load_formdata_into_question($fromform, true);
         $question->contextid = context_user::instance($USER->id)->id;
-        $question->templatefiles = $fromform['templatefiles_filemanager'];
 
         $response = array('attachments' => new question_file_saver($fromform['sourcefiles_filemanager'],
             'qtype_digitalliteracy', 'sourcefiles'), 'flag' => '1');
@@ -180,7 +179,9 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
             $errors[$error_types['sourcefiles']] = $error;
             $flag = true;
         }
-        if ($fromform['hastemplatefile'] && ($error = $this->validate_files($fromform, 'templatefiles_filemanager')) !== '') {
+        if ($fromform['hastemplatefile'] && ($error = $this->validate_files($fromform,
+                'templatefiles_filemanager')) !== '') {
+            $question->templatefiles = $fromform['templatefiles_filemanager'];
             $errors[$error_types['templatefiles']] = $error;
             $flag = true;
         }

@@ -76,11 +76,11 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
         $functions = $this->create_compare_test($data);
 
         foreach ($cell_collection as $coordinate => $index) {
-            $cell_1 = $source->getSheet(0)->getCell($coordinate, false);
-            $cell_2 = $response->getSheet(0)->getCell($coordinate, true);
-            $cell_3 = isset($template) ? $template->getSheet(0)->getCell($coordinate, false) : null;
-            if (!$this->compare($functions, $result, $cell_1, $cell_2, $cell_3))
-                $cell_2->getStyle()->getFill()->setFillType(
+            $cell_source = $source->getSheet(0)->getCell($coordinate, false);
+            $cell_response = $response->getSheet(0)->getCell($coordinate, true);
+            $cell_template = isset($template) ? $template->getSheet(0)->getCell($coordinate, false) : null;
+            if (!$this->compare($functions, $result, $cell_source, $cell_response, $cell_template))
+                $cell_response->getStyle()->getFill()->setFillType(
                     \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('ff0000');
         }
 
@@ -114,20 +114,24 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
         return $res;
     }
 
-    private function compare(array $functions, &$result, $cell_1, $cell_2, $cell_3) {
-        if (!isset($cell_1))
+    /**
+     * @param $cell_source Cell
+     */
+    private function compare(array $functions, &$result, $cell_source, $cell_response, $cell_template) {
+        if (!isset($cell_source))
             return false;
 
         $temp = 0;
         $counter = 0;
         foreach ($functions as $function) {
-            $res = $this->compare_cells($function['params'], $cell_1, $cell_2, $cell_3);
-            if ($res) {
-                $result->{$function['matches']}++;
-                $temp++;
-            }
+            $res = $this->compare_cells($function['params'], $cell_source, $cell_response, $cell_template);
             if ($res < 0) {
                 $counter++;
+                break;
+            }
+            if ($res === true) {
+                $result->{$function['matches']}++;
+                $temp++;
             }
         }
         if ($counter === count($functions))
@@ -137,12 +141,13 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
     }
 
     /** Cell value comparison */
-    function compare_cells(array $functions, $cell_1, $cell_2, $cell_3) {
-        if (isset($cell_3)) {
-            if ($this->helper($functions, $cell_1, $cell_3))
-                return -1; // TODO logical???
+    function compare_cells(array $functions, $cell_source, $cell_response, $cell_template) {
+        if (isset($cell_template)) {
+            if ($this->helper($functions, $cell_source, $cell_template))
+                if ($this->helper($functions, $cell_source, $cell_response))
+                    return -1; // TODO logical???
         }
-        return $this->helper($functions, $cell_1, $cell_2);
+        return $this->helper($functions, $cell_source, $cell_response);
     }
 
     private function helper(array &$functions, Cell $cell_1, Cell $cell_2) {
@@ -203,20 +208,6 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
                 }
             }
         }
-    }
-
-    public function validate_filea($file)
-    {
-        // $ext = strtolower(substr($file, strrpos($file, '.') + 1));
-        try {
-             IOFactory::createReaderForFile($file);
-        } catch (Exception $ex) {
-            return true;
-        }
-//        $spreadsheet = IOFactory::load($file);
-//        if ($spreadsheet->getSheetCount() == 0)
-//            return true;
-        return false;
     }
 }
 /**  Define a Read Filter class implementing IReadFilter  */

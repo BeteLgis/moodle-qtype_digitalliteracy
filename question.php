@@ -130,10 +130,10 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
         foreach (self::response_data() as $value) {
             $data->$value = $this->$value;
         }
-        if (array_key_exists('flag', $response)) {
+        if (array_key_exists('flag', $response))
             $data->flag = true;
+        if (isset($this->templatefiles))
             $data->templatefiles = $this->templatefiles;
-        }
         $comparator = new qtype_digitalliteracy_comparator();
         $result = $comparator->grade_response($response, $data);
         if (!empty($result['error']))
