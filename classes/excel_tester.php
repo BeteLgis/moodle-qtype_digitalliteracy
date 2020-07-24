@@ -8,8 +8,19 @@ use PhpOffice\PhpSpreadsheet\Reader\IReadFilter;
 use PhpOffice\PhpSpreadsheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Calculation\Calculation;
 
 require_once($CFG->dirroot.'/question/type/digitalliteracy/question.php');
+
+function shutDownFunction() {
+    $error = error_get_last();
+    // Fatal error, E_ERROR === 1
+    if ($error['type'] === E_ERROR) {
+        // Do your stuff
+        echo 'Unexpected error [usually memory management]';
+    }
+}
+register_shutdown_function('shutDownFunction');
 
 /** Excel file (spreadsheet) comparator */
 class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compare_interface
@@ -46,8 +57,13 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
 
         $spreadsheet_response = $reader->load($data->response_path);
         $spreadsheet_source = $reader->load($data->source_path);
-        if (isset($data->template_path))
+        Calculation::getInstance($spreadsheet_response)->disableCalculationCache();
+        Calculation::getInstance($spreadsheet_source)->disableCalculationCache();
+
+        if (isset($data->template_path)) {
             $spreadsheet_template = $reader->load($data->template_path);
+            Calculation::getInstance($spreadsheet_template)->disableCalculationCache();
+        }
 
         $fraction = $this->compare_with_coefficients($spreadsheet_response,
             $spreadsheet_source, $spreadsheet_template, $data);
@@ -57,6 +73,7 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
         $mistakes_path = $data->request_directory . '\\' . $mistakes_name;
         $writer = IOFactory::createWriter($spreadsheet_response, $filetype);
         $writer->save($mistakes_path);
+        $writer->setUseDiskCaching(true, $data->request_directory);
         return array('file_saver' => qtype_digitalliteracy_comparator::
         generate_question_file_saver($mistakes_name, $mistakes_path), 'fraction' => $fraction);
     }
@@ -80,6 +97,7 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
             $cell_source = $source->getSheet(0)->getCell($coordinate, false);
             $cell_response = $response->getSheet(0)->getCell($coordinate, true);
             $cell_template = isset($template) ? $template->getSheet(0)->getCell($coordinate, false) : null;
+
             if (!$this->compare($types, $result, $cell_source, $cell_response, $cell_template) && !$data->flag)
                 $cell_response->getStyle()->getFill()->setFillType(
                     \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('ff0000');
@@ -116,8 +134,10 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
     }
 
     private function compare(array $types, &$result, $cell_source, $cell_response, $cell_template) {
-        if (!isset($cell_source))
+        if (!isset($cell_source)) {
+            $result->cell_total++;
             return false;
+        }
 
         $res = $this->compare_cells($types, $cell_source, $cell_response);
         if (isset($cell_template)) {
@@ -156,11 +176,22 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
      */
     private function compare_cells_by_type(array &$criterions, Cell $cell_1, Cell $cell_2) {
         $temp = 0;
+        if (!$this->compare_visibility($cell_1, $cell_2))
+            return false;
         foreach ($criterions as $criterion) {
             if (call_user_func(array($this, $criterion), $cell_1, $cell_2))
                 $temp++;
         }
         return $temp === count($criterions);
+    }
+
+    function compare_visibility(Cell $cell_1, Cell $cell_2) {
+        return $this->is_visible($cell_1) === $this->is_visible($cell_2);
+    }
+
+    function is_visible(Cell $cell) {
+        return $cell->getWorksheet()->getRowDimension($cell->getRow())->getVisible()
+            && $cell->getWorksheet()->getColumnDimension($cell->getColumn())->getVisible();
     }
 
     function compare_value(Cell $cell_1, Cell $cell_2) {

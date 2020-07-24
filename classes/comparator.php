@@ -20,6 +20,9 @@ class qtype_digitalliteracy_comparator
         } catch (Exception $ex) {
             return array('error' => $ex->getMessage());
         }
+        catch (Throwable $th) {
+            return array('error' => 'Fatal error: ' . $th->getMessage());
+        }
         return $result;
     }
 
