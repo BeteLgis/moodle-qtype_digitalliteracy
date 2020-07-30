@@ -71,9 +71,20 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
      */
     public function is_same_response(array $prevresponse, array $newresponse)
     {
-        return $this->attachmentsrequired == 0 ||
-                question_utils::arrays_same_at_key_missing_is_blank(
-                    $prevresponse, $newresponse, 'attachments');
+        $prevattachments = $this->get_attached_files($prevresponse);
+        $newattachments = $this->get_attached_files($newresponse);
+        return $prevattachments == $newattachments;
+    }
+
+    private function get_attached_files(array $response) {
+        $attachments = array();
+        if (array_key_exists('attachments', $response) && $response['attachments']) {
+            $files = $response['attachments']->get_files();
+            foreach ($files as $file) {
+                $attachments[$file->get_filename()] = $file->get_content();
+            }
+        }
+        return $attachments;
     }
     /** Use by many of the behaviours to determine whether the student has provided enough of
      * an answer for the question to be graded automatically, or whether it must be considered aborted.
@@ -90,7 +101,7 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
             && $response['attachments'] instanceof question_response_files) {
             $files = $response['attachments']->get_files();
         } else
-            $files = array();
+            return get_string('notanswered', 'qtype_digitalliteracy');
 
         $comparator = new qtype_digitalliteracy_comparator();
         return $comparator->validate_files($files, $this->responseformat,
@@ -158,11 +169,9 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
      * @param $forcedownload bool whether the user must be forced to download the file.
      */
     public function check_file_access($qa, $options, $component, $filearea, $args, $forcedownload) {
-        if ($component == 'question' && $filearea == 'response_attachments') {
-            // Response attachments visible if the question has them.
-            return $this->attachmentsrequired != 0;
-        } else if ($component == 'question' && $filearea == 'response_mistakes') {
-            return $this->attachmentsrequired != 0;
+        if ($component == 'question' && ($filearea == 'response_attachments' ||
+            $filearea == 'response_mistakes')) {
+            return true;
         } else {
             return parent::check_file_access($qa, $options, $component,
                 $filearea, $args, $forcedownload);

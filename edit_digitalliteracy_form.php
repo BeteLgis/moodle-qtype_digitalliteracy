@@ -77,7 +77,7 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
             if ($type === 'text') {
                 $significance = $name;
                 $group[] = $mform->createElement($type, $name, get_string('significance',
-                    'qtype_digitalliteracy'));
+                    'qtype_digitalliteracy'), array('size' => 1, 'maxlength' => 3));
                 $mform->setType($name, PARAM_RAW);
             } else {
                 $group[] = $mform->createElement($type, $name, get_string($name,'qtype_digitalliteracy'));
@@ -120,11 +120,25 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
      * @param array $fromform array of ("fieldname"=>value) of submitted data*/
     public function validation($fromform, $files) {
         $errors = parent::validation($fromform, $files);
+        // coefs - coef [significance text area] => group association
         $coefs = array('firstcoef' => 'coef_value_group', 'secondcoef' => 'coef_format_group',
             'thirdcoef' => 'coef_enclosures_group');
+        // groups - group => param (checkbox) association
         $groups = array('coef_value_group' => ['paramvalue', 'paramtype'], 'coef_format_group' =>
         ['parambold', 'paramfillcolor'], 'coef_enclosures_group' => ['paramcharts', 'paramimages']);
 
+        $values = $this->validatecoefs($coefs, $fromform, $errors);
+        $this->validateparams($coefs, $groups, $fromform, $values, $errors);
+        if ($fromform['filetypeslist'] == '')
+            $errors['filetypeslist'] = get_string('emptyfiletypelist', 'qtype_digitalliteracy');
+
+        if (empty($errors))
+            $this->validatedata($fromform, $errors);
+
+        return $errors;
+    }
+
+    private function validatecoefs($coefs, $fromform, &$errors) {
         $options = array(
             'options' => array(
                 'default' => -1,
@@ -133,19 +147,23 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
             )
         );
         $values = array();
-        foreach ($coefs as $value => $group) {
+        foreach ($coefs as $value => $group) { // validate significance value
             if (($res = filter_var($fromform[$value], FILTER_VALIDATE_INT, $options)) < 0) {
                 $errors[$group] = get_string('validatecoef', 'qtype_digitalliteracy');
             } else
                 $values[$value] = $res;
         }
-        if (count($values) === 3 && array_sum($values) != 100) {
+        if (count($values) === 3 && array_sum($values) != 100) { // validate significances sum
             foreach ($coefs as $value => $group) {
-               $errors[$group] = get_string('notahunred', 'qtype_digitalliteracy');
+                $errors[$group] = get_string('notahunred', 'qtype_digitalliteracy');
             }
         }
+        return $values;
+    }
+
+    private function validateparams($coefs, $groups, $fromform, $values, &$errors) {
         foreach ($values as $key => $value) {
-            if ($value != 0) {
+            if ($value != 0) { // for each coefficient with non-zero significance validate params - checkboxes
                 $counter = false;
                 foreach ($groups[$coefs[$key]] as $checkbox) {
                     if ($fromform[$checkbox] == 1) {
@@ -153,17 +171,12 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
                         break;
                     }
                 }
-                if (!$counter) {
+                if (!$counter) { // concatenate error string for a group === $coefs[$key]
                     $prefix = empty($errors[$coefs[$key]]) ? '' : $errors[$coefs[$key]] . ' | ';
                     $errors[$coefs[$key]] = $prefix . get_string('tickacheckbox', 'qtype_digitalliteracy');
                 }
             }
         }
-
-        if (empty($errors))
-            $this->validatedata($fromform, $errors);
-
-        return $errors;
     }
 
     private function validatedata($fromform, &$errors) {

@@ -9,6 +9,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Calculation\Calculation;
+use PhpOffice\PhpSpreadsheet\Chart\Chart;
 
 require_once($CFG->dirroot.'/question/type/digitalliteracy/question.php');
 
@@ -29,10 +30,16 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
         $res = new stdClass();
         try {
             $reader = IOFactory::createReaderForFile($filepath);
+            $reader->setReadEmptyCells(false);
+            $reader->setReadDataOnly(true);
+            $reader->setIncludeCharts(false);
             $spreadsheet = $reader->load($filepath);
-            if ($spreadsheet->getSheetCount() == 0)
-                throw new Exception("Spreadsheet has 0 sheets.");
-            $spreadsheet->getSheet(0)->getCellCollection();
+            Calculation::getInstance($spreadsheet)->disableCalculationCache();
+            if (($count = $spreadsheet->getSheetCount()) != 1)
+                throw new Exception('Spreadsheet has '. $count. ' sheets ('.
+                    implode(', ', $spreadsheet->getSheetNames()). '). 1 required!');
+            if (count(($sheet = $spreadsheet->getSheet(0))->getCellCollection()->getCoordinates()) === 0)
+                throw new Exception('Sheet with title '. $sheet->getTitle(). ' has 0 non-empty cells');
         } catch (Exception $ex) {
             $res->file = $filename;
             $res->msg = $ex->getMessage();
@@ -45,47 +52,49 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
      * @throws \PhpOffice\PhpSpreadsheet\Exception
      * @throws \PhpOffice\PhpSpreadsheet\Reader\Exception
      */
-    public function compare_files(&$data)
+    public function compare_files($data)
     {
         // preparing files
         $filetype = IOFactory::identify($data->response_path);
         $reader = IOFactory::createReader($filetype);
         $reader->setReadEmptyCells(false);
         $data->thirdcoef > 0 ? $reader->setIncludeCharts(true) : $reader->setIncludeCharts(false);
-//        $data->coef_format == 0 && $data->coef_enclosures == 0 ? $reader->setReadDataOnly(true) :
-//            $reader->setReadDataOnly(false);
-
+        $data->secondcoef == 0 && $data->thirdcoef == 0 ? $reader->setReadDataOnly(true) :
+            $reader->setReadDataOnly(false);
         $spreadsheet_response = $reader->load($data->response_path);
         $spreadsheet_source = $reader->load($data->source_path);
         Calculation::getInstance($spreadsheet_response)->disableCalculationCache();
         Calculation::getInstance($spreadsheet_source)->disableCalculationCache();
 
+        $spreadsheet_template = null;
         if (isset($data->template_path)) {
             $spreadsheet_template = $reader->load($data->template_path);
             Calculation::getInstance($spreadsheet_template)->disableCalculationCache();
         }
 
-        $fraction = $this->compare_with_coefficients($spreadsheet_response,
-            $spreadsheet_source, $spreadsheet_template, $data);
+        $fraction = $this->compare_with_coefficients($data, $spreadsheet_source,
+            $spreadsheet_response, $spreadsheet_template);
+
         if ($data->flag)
             return array('fraction' => $fraction);
         $mistakes_name = 'Mistakes_' . $data->mistakes_name;
         $mistakes_path = $data->request_directory . '\\' . $mistakes_name;
+
         $writer = IOFactory::createWriter($spreadsheet_response, $filetype);
-        $writer->save($mistakes_path);
         $writer->setUseDiskCaching(true, $data->request_directory);
+        $writer->setPreCalculateFormulas(false);
+        $data->thirdcoef > 0 ? $writer->setIncludeCharts(true) : $writer->setIncludeCharts(false);
+        $writer->save($mistakes_path);
         return array('file_saver' => qtype_digitalliteracy_comparator::
-        generate_question_file_saver($mistakes_name, $mistakes_path), 'fraction' => $fraction);
+        generate_question_file_saver(array($mistakes_name => $mistakes_path)), 'fraction' => $fraction);
     }
 
-    /**
-     * @param $response Spreadsheet
-     * @param $source Spreadsheet
-     * @param $template Spreadsheet
-     */
-    private function compare_with_coefficients(&$response, &$source, &$template, &$data) {
-        $temp = $source->getSheet(0)->getCellCollection()->getCoordinates();
-        $temp_2 = $response->getSheet(0)->getCellCollection()->getCoordinates();
+    private function compare_with_coefficients($data, $spreadsheet_source,
+                                               &$spreadsheet_response, $spreadsheet_template)
+    {
+//        echo 'Before load '. memory_get_usage()/1024.0 / 1024 . " MB \r\n"; TODO
+        $temp = $spreadsheet_source->getSheet(0)->getCellCollection()->getCoordinates();
+        $temp_2 = $spreadsheet_response->getSheet(0)->getCellCollection()->getCoordinates();
         $cell_collection = array_merge(array_flip($temp), array_flip($temp_2));
 
         $result = new stdClass();
@@ -94,23 +103,31 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
         $types = $this->get_compare_types($data);
 
         foreach ($cell_collection as $coordinate => $index) {
-            $cell_source = $source->getSheet(0)->getCell($coordinate, false);
-            $cell_response = $response->getSheet(0)->getCell($coordinate, true);
-            $cell_template = isset($template) ? $template->getSheet(0)->getCell($coordinate, false) : null;
+            $cell_source = $spreadsheet_source->getSheet(0)->getCell($coordinate, false);
+            $cell_response = $spreadsheet_response->getSheet(0)->getCell($coordinate, true);
+            $cell_template = isset($spreadsheet_template) ? $spreadsheet_template->
+            getSheet(0)->getCell($coordinate, false) : null;
 
             if (!$this->compare($types, $result, $cell_source, $cell_response, $cell_template) && !$data->flag)
                 $cell_response->getStyle()->getFill()->setFillType(
                     \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('ff0000');
         }
 
-//        $this->compare_cells_by_enclosures($source, $response, $data);
-        return $result->cell_total == 0 ? 0 : ($data->firstcoef * $result->value_matches +
-                $data->secondcoef * $result->style_matches) // + $data->chart * $data->chart_matches)
-            / $result->cell_total / 100;
+        if ($data->thirdcoef > 0)
+            $this->compare_enclosures($spreadsheet_source, $spreadsheet_response, $result);
+
+        if ($result->cell_total === 0)
+            $result->cell_total = 1;
+        if ($result->chart_total === 0)
+            $result->chart_total = 1;
+
+        return ($data->firstcoef * $result->value_matches +
+                $data->secondcoef * $result->style_matches)
+            / $result->cell_total / 100 + $data->thirdcoef * $result->chart_matches / $result->chart_total / 100;
     }
 
 
-    private function get_compare_types(&$data) {
+    private function get_compare_types($data) {
         $res = array();
         if ($data->firstcoef) {
             $items = array();
@@ -174,7 +191,7 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
      * @param array $criterions [value, data type or bold, fill color]
      * @return bool True if all criterions of the current comparison type [text, styles] are equal, false otherwise.
      */
-    private function compare_cells_by_type(array &$criterions, Cell $cell_1, Cell $cell_2) {
+    private function compare_cells_by_type(array $criterions, Cell $cell_1, Cell $cell_2) {
         $temp = 0;
         if (!$this->compare_visibility($cell_1, $cell_2))
             return false;
@@ -195,7 +212,7 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
     }
 
     function compare_value(Cell $cell_1, Cell $cell_2) {
-        return $cell_1->getCalculatedValue() === $cell_2->getCalculatedValue();
+        return $cell_1->getValue() === $cell_2->getValue();
     }
 
     function compare_datatype(Cell $cell_1, Cell $cell_2) {
@@ -215,41 +232,95 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
     /**
      * @param $source Spreadsheet
      * @param $response Spreadsheet
-     * @param $coef
-     * @return bool
+     * @param $result
      */
-    function compare_cells_by_enclosures($source, $response, &$coef) {
+    function compare_enclosures($source, $response, &$result) {
         $sheet_source = $source->getSheet(0);
         $sheet_response = $response->getSheet(0);
 
-        foreach ($sheet_source->getChartNames() as $i => $name)
+        foreach ($sheet_source->getChartNames() as $chart_name)
         {
-            $chart_source = $sheet_source->getChartByName($name);
-            if ($chart = $sheet_response->getChartByName($name)) {
-                // Comparison
-                if ($chart->getTitle() !== null) {
-                    $caption = '"' . implode(' ', $chart->getTitle()->getCaption()) . '"';
-                } else {
-                    $caption = 'Untitled';
-                }
-                $groupCount = $chart->getPlotArea()->getPlotGroupCount();
-                if ($groupCount == 1) {
-                    $chartType = $chart->getPlotArea()->getPlotGroupByIndex(0)->getPlotType();
-                } else {
-                    $chartTypes = [];
-                    for ($i = 0; $i < $groupCount; ++$i) {
-                        $chartTypes[] = $chart->getPlotArea()->getPlotGroupByIndex($i)->getPlotType();
-                    }
-                }
+            $chart_source = $sheet_source->getChartByName($chart_name);
+            $chart_response = $sheet_response->getChartByName($chart_name);
+            $this->compare_formatting($chart_source, $chart_response, $result);
+        }
+    }
+
+    function compare_formatting($source, $response, &$result) {
+//        if ($this->get_title($source->getTitle()) === $this->get_title($response->getTitle()))
+//            $result->chart_matches++;
+//        if ($this->get_title($source->getXAxisLabel()) === $this->get_title($response->getXAxisLabel()))
+//            $result->chart_matches++;
+//        if ($this->get_axis($source, true) === $this->get_axis($response, true))
+//            $result->chart_matches++;
+//        if ($this->get_title($source->getYAxisLabel()) === $this->get_title($response->getYAxisLabel()))
+//            $result->chart_matches++;
+//        if ($this->get_axis($source, false) === $this->get_axis($response, false))
+//            $result->chart_matches++;
+        $this->compare_plot_area($source, $response, $result);
+        $result->chart_total += 0;
+    }
+
+    function get_title(\PhpOffice\PhpSpreadsheet\Chart\Title $title) {
+        if ($title !== null) {
+            $caption = implode(' ', $title->getCaption());
+        } else {
+            $caption = 'Untitled';
+        }
+        return $caption;
+    }
+
+    function get_axis(Chart $chart, bool $axisX) {
+        $axis = $axisX ? $chart->getChartAxisX() : $chart->getChartAxisY();
+        return $axis->getAxisNumberFormat() . $axis->getFillProperty('type') .
+            $axis->getLineProperty('type');
+    }
+
+    function compare_plot_area($source_chart, $response_chart, &$result) {
+        $source_plot_area = $source_chart->getPlotArea();
+        if (!isset($source_plot_area))
+            return;
+        $response_plot_area = $response_chart === false || is_null($response_chart->getPlotArea()) ?
+            false : $response_chart->getPlotArea();
+        for ($index = 0; $index < $source_plot_area->getPlotGroupCount(); $index++) {
+            $source_plot_group = $this->getPlotGroup($source_plot_area, $index);
+            if ($source_plot_group === false) // should not happen
+                continue;
+            $response_plot_group = $this->getPlotGroup($response_plot_area, $index);
+            for ($index_2 = 0; $index_2 < $source_plot_group->getPlotSeriesCount(); $index_2++) {
+                $source_plot_values = $this->getPlotValues($source_plot_group, $index_2);
+                if ($source_plot_values === false) // should not happen
+                    continue;
+                $response_plot_values = $this->getPlotValues($response_plot_group, $index_2);
+
+                $result->chart_total += count($source_plot_values);
+                if ($response_plot_values === false)
+                    continue;
+                $matches = count(array_intersect_assoc($source_plot_values, $response_plot_values));
+                $matches -= abs(count($source_plot_values) - count($response_plot_values));
+                if ($matches < 0)
+                    $matches = 0;
+                $result->chart_matches += $matches;
             }
         }
+    }
+
+    function getPlotGroup($area, $index) {
+        if ($area === false || !array_key_exists($index, $area->getPlotGroup()))
+            return false;
+        return $area->getPlotGroupByIndex($index);
+    }
+
+    function getPlotValues($dataSeries, $index) {
+        if ($dataSeries === false || $dataSeries->getPlotValuesByIndex($index) === false)
+            return false;
+        return $dataSeries->getPlotValuesByIndex($index)->getDataValues();
     }
 }
 /**  Define a Read Filter class implementing IReadFilter  */
 class ChunkReadFilter implements IReadFilter
 {
     private $startRow = 0;
-
     private $endRow = 0;
 
     /**

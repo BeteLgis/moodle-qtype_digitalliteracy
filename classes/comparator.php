@@ -78,7 +78,10 @@ class qtype_digitalliteracy_comparator
         return $result;
     }
 
-    public static function generate_question_file_saver($name, $path) {
+    /**
+     * @param array $files ($name => $path) pairs
+     */
+    public static function generate_question_file_saver(array $files) {
         global $USER;
         $draftitemid = 0;
         file_prepare_draft_area($draftitemid, null, null, null, null);
@@ -89,8 +92,19 @@ class qtype_digitalliteracy_comparator
         $filerecord->filearea = 'draft';
         $filerecord->itemid = $draftitemid;
         $filerecord->filepath = '/';
-        $filerecord->filename = $name;
-        $fs->create_file_from_pathname($filerecord, $path);
+        foreach ($files as $name => $path)
+        {
+            $filerecord->filename = $name;
+            if (file_exists($path))
+                $fs->create_file_from_pathname($filerecord, $path);
+            else {
+                $file = new stdClass();
+                $file->name = $name;
+                $file->path = $path;
+                throw new Exception(get_string('error_filenotexist',
+                    'qtype_digitalliteracy', $file));
+            }
+        }
         return new question_file_saver($draftitemid, 'question', 'response_mistakes');
     }
 
@@ -117,11 +131,16 @@ class qtype_digitalliteracy_comparator
         $filename = $file->get_filename();
         if (!$filetypesutil->is_allowed_file_type($filename, $whitelist))
             return get_string('error_incorrectextension', 'qtype_digitalliteracy', $filename);
+
+        $maxlen = max(array_map('strlen', $whitelist)) + 3;
+        if (strlen($filename) < $maxlen)
+            return get_string('error_tooshortfilename', 'qtype_digitalliteracy', $filename);
+
         $fullpath = $dir.'\\'. $filename;
         if ($file->copy_content_to($fullpath))
             $result[] = $fullpath;
         else
-            throw new Exception(get_string('error_filecopy', 'qtype_digitalliteracy', $filename));
+            return get_string('error_filecopy', 'qtype_digitalliteracy', $filename);
         return $comparator->validate_file($fullpath, $filename);
     }
 
@@ -140,7 +159,7 @@ class qtype_digitalliteracy_comparator
                 'qtype_digitalliteracy', $attachmentsrequired);
         }
 
-        if (($attachcount = count($files)) > 0) {
+        if ($attachcount > 0) {
             $result = array();
             $filetypesutil = new \core_form\filetypes_util();
             $whitelist = $filetypesutil->normalize_file_types($filetypeslist);
@@ -158,6 +177,6 @@ class qtype_digitalliteracy_comparator
 }
 
 interface qtype_digitalliteracy_compare_interface {
-    public function compare_files(&$data);
+    public function compare_files($data);
     public function validate_file($filepath, $filename);
 }

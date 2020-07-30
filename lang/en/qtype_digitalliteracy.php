@@ -33,11 +33,14 @@ $string['validatecoef'] = 'Enter a float in range [0, 100], please!';
 $string['notahunred'] = 'Sum is not a hundred';
 $string['tickacheckbox'] = 'Tick one setting at least';
 $string['validationerror'] = 'Wrong comparison parameters (it\'s impossible to get max mark)';
+$string['emptyfiletypelist'] = 'Filetypelist should not be empty';
 
 // file errors
-$string['error_noreader'] = 'Can\'t read file {$a->file}. Message: {$a->msg}';
+$string['error_noreader'] = 'Can\'t read or accept file {$a->file}. Message: {$a->msg}';
 $string['error_incorrectextension'] = 'File with wrong extension: {$a}';
 $string['error_filecopy'] = 'Internal error: failed to copy a file {$a} into temporary directory needed for analysis';
+$string['error_tooshortfilename'] = 'File \'{$a}\' has a too short name (3 characters excluding extension and a dot are needed)';
+$string['error_filenotexist'] = 'Internal error: file \'{$a->name}\' by path \'{$a->path}\' doesn\'t exist';
 
 // questiontype.php
 $string['excel'] = 'Excel';
@@ -48,7 +51,7 @@ $string['answered'] = 'You uploaded: {$a}';
 $string['notanswered'] = 'You haven\'t uploaded any file.';
 $string['mustrequirefewer'] = 'You cannot require more attachments than you allow.';
 $string['insufficientattachments'] = 'Not proper amount of attachments, {$a} required.';
-$string['unknownerror'] = 'An unexpected error occurred. Please, try again shortly.';
+$string['unknownerror'] = 'An unexpected error occurred. Read feedback below.';
 
 // renderer.php
 $string['templatefiles'] = 'Template file';

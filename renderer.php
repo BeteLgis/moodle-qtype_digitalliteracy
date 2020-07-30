@@ -48,16 +48,22 @@ class qtype_digitalliteracy_renderer extends qtype_renderer {
         $result .= html_writer::tag('h4', html_writer::tag('b',
             get_string('answerfiles', 'qtype_digitalliteracy')));
 
-        $result .= !empty($options->readonly) && empty($qa->get_last_qt_files('attachments', $options->context->id)) ?
+        $result .= !empty($options->readonly) && $files == '' ?
             html_writer::tag('div', get_string('notanswered', 'qtype_digitalliteracy')) :
             html_writer::tag('div', $files, array('class' => 'attachments'));
 
-        if (!empty($options->readonly) && ($question->showmistakes || !$student_or_no_role)) {
+        if ($qa->get_state() == question_state::$invalid) {
+            $result .= html_writer::nonempty_tag('div', $question->get_validation_error($qa->get_last_qt_data()),
+                array('class' => 'validationerror'));
+        }
+
+        $mistakefiles = $this->get_files_from_filearea($qa, $options->context->id,
+            'question','response_mistakes', $qa->get_last_step()->get_id());
+
+        if (!empty($options->readonly) && $mistakefiles != '' && ($question->showmistakes || !$student_or_no_role)) {
             $result .= html_writer::tag('h4', html_writer::tag('b',
                 get_string('mistakefiles', 'qtype_digitalliteracy')));
-            $result .= html_writer::tag('div', $this->get_files_from_filearea($qa, $options->context->id,
-                'question','response_mistakes', $qa->get_last_step()->get_id()),
-                array('class' => 'mistakefiles'));
+            $result .= html_writer::tag('div', $mistakefiles, array('class' => 'mistakefiles'));
         }
 
         $result .= html_writer::end_tag('div');
@@ -152,5 +158,27 @@ class qtype_digitalliteracy_renderer extends qtype_renderer {
         return $filesrenderer->render($fm). html_writer::empty_tag(
                 'input', array('type' => 'hidden', 'name' => $qa->get_qt_field_name('attachments'),
                 'value' => $pickeroptions->itemid)) . $text;
+    }
+
+    public function feedback(question_attempt $qa, question_display_options $options) {
+        $optionsclone = clone($options);
+
+        if ($qa->get_last_step()->has_qt_var('_error'))
+            $optionsclone->feedback = question_display_options::VISIBLE;
+
+        return parent::feedback($qa, $optionsclone);
+    }
+
+    public function specific_feedback(question_attempt $qa)
+    {
+        $error = $qa->get_last_step()->get_qt_var('_error');
+        if (!isset($error))
+            return '';
+
+        $result = '';
+        $result .= html_writer::start_tag('div', array('class' => 'response_error'));
+        $result .= html_writer::tag('div', $error, array('class' => 'error_text'));
+        $result .= html_writer::end_tag('div');
+        return $result;
     }
 }
