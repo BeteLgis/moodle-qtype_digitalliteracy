@@ -4,28 +4,26 @@ defined('MOODLE_INTERNAL') || die();
 
 //require_once($CFG->dirroot.'/question/type/digitalliteracy/slider.php');
 require_once($CFG->dirroot.'/question/type/digitalliteracy/question.php');
+
 //MoodleQuickForm::registerElementType('slider', "$CFG->dirroot/question/type/digitalliteracy/slider.php",
 //    'MoodleQuickForm_slider');
 /** class for rendering (and outputting) question edit form */
 class qtype_digitalliteracy_edit_form extends question_edit_form {
     /** Add any question-type specific form fields.
      * @Overrides question_edit_form::definition_inner
-     * @param $mform object the form being built.*/
+     * @param $mform MoodleQuickForm the form being built.*/
     protected function definition_inner($mform) {
+        global $PAGE;
         $qtype = question_bank::get_qtype('digitalliteracy');
-
         $options['subdirs'] = false;
-
-        $mform->addElement('header', 'responsefileoptions', get_string('responsefileoptions',
-            'qtype_digitalliteracy'));
-        $mform->setExpanded('responsefileoptions');
-
-        $mform->addElement('filemanager', 'sourcefiles_filemanager', get_string('sourcefiles',
-            'qtype_digitalliteracy'), null, $options);
 
         $mform->addElement('select', 'responseformat',
             get_string('responseformat', 'qtype_digitalliteracy'), $qtype->response_formats());
         $mform->setDefault('responseformat', 'excel');
+
+        $mform->addElement('header', 'responsefileoptions', get_string('responsefileoptions',
+            'qtype_digitalliteracy'));
+        $mform->setExpanded('responsefileoptions');
 
         $mform->addElement('select', 'attachmentsrequired',
             get_string('attachmentsrequired', 'qtype_digitalliteracy'), $qtype->attachments_required_options());
@@ -40,6 +38,9 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
 
 //        $mform->addElement('slider', 'firstslider', '[Feature is in development]',
 //            array('min' => 0, 'max' => 10, 'value' => 5));
+
+        $mform->addElement('filemanager', 'sourcefiles_filemanager', get_string('sourcefiles',
+            'qtype_digitalliteracy'), null, $options);
 
         $mform->addElement('advcheckbox', 'hastemplatefile', get_string('hastemplatefile',
             'qtype_digitalliteracy'));
@@ -69,8 +70,17 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         $mform->setDefault('thirdcoef', '0');
         $mform->setDefault('binarygrading', '0');
         $mform->disabledIf('excludetemplate', 'hastemplatefile');
+
+        $PAGE->requires->js_call_amd('qtype_digitalliteracy/formatchange', 'process');
+        $coefs = array('id_firstcoef', 'id_secondcoef', 'id_thirdcoef');
+        $PAGE->requires->js_call_amd('qtype_digitalliteracy/purecoefficientchange', 'process',
+            array($coefs));
     }
 
+    /**
+     * @link MoodleQuickForm_group
+     * @param $mform MoodleQuickForm
+     */
     private function add_group(&$mform, array $names, $groupname) {
         $group = array();
         foreach ($names as $name => $type) {
@@ -80,7 +90,8 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
                     'qtype_digitalliteracy'), array('size' => 1, 'maxlength' => 3));
                 $mform->setType($name, PARAM_RAW);
             } else {
-                $group[] = $mform->createElement($type, $name, get_string($name,'qtype_digitalliteracy'));
+                $group[] = $mform->createElement($type, $name, get_string($name,'qtype_digitalliteracy'),
+                    null, array('data-addon' => 'anime'));
                 $mform->setDefault($name, '1');
             }
         }

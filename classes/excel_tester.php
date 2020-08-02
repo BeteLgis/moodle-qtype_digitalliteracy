@@ -15,20 +15,19 @@ require_once($CFG->dirroot.'/question/type/digitalliteracy/question.php');
 
 function shutDownFunction() {
     $error = error_get_last();
-    // Fatal error, E_ERROR === 1
     if ($error['type'] === E_ERROR) {
-        // Do your stuff
-        echo 'Unexpected error [usually memory management]';
+        echo 'Unexpected error, please report to the developer on e-mail \'aasharipov@edu.hse.ru\'!';
     }
 }
 register_shutdown_function('shutDownFunction');
 
 /** Excel file (spreadsheet) comparator */
-class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compare_interface
+class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_base
 {
     public function validate_file($filepath, $filename) {
         $res = new stdClass();
         try {
+            $this->start();
             $reader = IOFactory::createReaderForFile($filepath);
             $reader->setReadEmptyCells(false);
             $reader->setReadDataOnly(true);
@@ -38,8 +37,14 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
             if (($count = $spreadsheet->getSheetCount()) != 1)
                 throw new Exception('Spreadsheet has '. $count. ' sheets ('.
                     implode(', ', $spreadsheet->getSheetNames()). '). 1 required!');
-            if (count(($sheet = $spreadsheet->getSheet(0))->getCellCollection()->getCoordinates()) === 0)
+            $sheet = $spreadsheet->getSheet(0);
+            $cell_collection = array_flip($sheet->getCellCollection()->getCoordinates());
+            if (count($cell_collection) === 0)
                 throw new Exception('Sheet with title '. $sheet->getTitle(). ' has 0 non-empty cells');
+            foreach ($cell_collection as $coordinate => $index) {
+                $cell = $sheet->getCell($coordinate, false);
+                $cell->getCalculatedValue(); // looking for infinite loops (like 'F:F' range)
+            }
         } catch (Exception $ex) {
             $res->file = $filename;
             $res->msg = $ex->getMessage();
@@ -65,15 +70,17 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
         $spreadsheet_source = $reader->load($data->source_path);
         Calculation::getInstance($spreadsheet_response)->disableCalculationCache();
         Calculation::getInstance($spreadsheet_source)->disableCalculationCache();
+        $sheet_source = $spreadsheet_source->getSheet(0);
+        $sheet_response = $spreadsheet_response->getSheet(0);
 
         $spreadsheet_template = null;
         if (isset($data->template_path)) {
             $spreadsheet_template = $reader->load($data->template_path);
             Calculation::getInstance($spreadsheet_template)->disableCalculationCache();
         }
-
-        $fraction = $this->compare_with_coefficients($data, $spreadsheet_source,
-            $spreadsheet_response, $spreadsheet_template);
+        $sheet_template = isset($spreadsheet_template) ? $spreadsheet_template->getSheet(0) : null;
+        $fraction = $this->compare_with_coefficients($data, $sheet_source,
+            $sheet_response, $sheet_template);
 
         if ($data->flag)
             return array('fraction' => $fraction);
@@ -89,12 +96,17 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
         generate_question_file_saver(array($mistakes_name => $mistakes_path)), 'fraction' => $fraction);
     }
 
-    private function compare_with_coefficients($data, $spreadsheet_source,
-                                               &$spreadsheet_response, $spreadsheet_template)
+    /**
+     * @param $sheet_source Worksheet\Worksheet
+     * @param $sheet_response Worksheet\Worksheet
+     * @param $sheet_template Worksheet\Worksheet
+     */
+    private function compare_with_coefficients($data, $sheet_source,
+                                               &$sheet_response, $sheet_template)
     {
 //        echo 'Before load '. memory_get_usage()/1024.0 / 1024 . " MB \r\n"; TODO
-        $temp = $spreadsheet_source->getSheet(0)->getCellCollection()->getCoordinates();
-        $temp_2 = $spreadsheet_response->getSheet(0)->getCellCollection()->getCoordinates();
+        $temp = $sheet_source->getCellCollection()->getCoordinates();
+        $temp_2 = $sheet_response->getCellCollection()->getCoordinates();
         $cell_collection = array_merge(array_flip($temp), array_flip($temp_2));
 
         $result = new stdClass();
@@ -103,10 +115,10 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
         $types = $this->get_compare_types($data);
 
         foreach ($cell_collection as $coordinate => $index) {
-            $cell_source = $spreadsheet_source->getSheet(0)->getCell($coordinate, false);
-            $cell_response = $spreadsheet_response->getSheet(0)->getCell($coordinate, true);
-            $cell_template = isset($spreadsheet_template) ? $spreadsheet_template->
-            getSheet(0)->getCell($coordinate, false) : null;
+            $cell_source = $sheet_source->getCell($coordinate, false);
+            $cell_response = $sheet_response->getCell($coordinate, true);
+            $cell_template = isset($sheet_template) ? $sheet_template
+                ->getCell($coordinate, false) : null;
 
             if (!$this->compare($types, $result, $cell_source, $cell_response, $cell_template) && !$data->flag)
                 $cell_response->getStyle()->getFill()->setFillType(
@@ -114,7 +126,7 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
         }
 
         if ($data->thirdcoef > 0)
-            $this->compare_enclosures($spreadsheet_source, $spreadsheet_response, $result);
+            $this->compare_enclosures($sheet_source, $sheet_response, $result);
 
         if ($result->cell_total === 0)
             $result->cell_total = 1;
@@ -215,6 +227,10 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
         return $cell_1->getValue() === $cell_2->getValue();
     }
 
+    function compare_calculated_value(Cell $cell_1, Cell $cell_2) {
+        return $cell_1->getCalculatedValue() === $cell_2->getCalculatedValue();
+    }
+
     function compare_datatype(Cell $cell_1, Cell $cell_2) {
         return $cell_1->getDataType() === $cell_2->getDataType();
     }
@@ -230,14 +246,11 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
     }
 
     /**
-     * @param $source Spreadsheet
-     * @param $response Spreadsheet
+     * @param $sheet_source Worksheet\Worksheet
+     * @param $sheet_response Worksheet\Worksheet
      * @param $result
      */
-    function compare_enclosures($source, $response, &$result) {
-        $sheet_source = $source->getSheet(0);
-        $sheet_response = $response->getSheet(0);
-
+    function compare_enclosures($sheet_source, $sheet_response, &$result) {
         foreach ($sheet_source->getChartNames() as $chart_name)
         {
             $chart_source = $sheet_source->getChartByName($chart_name);
@@ -280,21 +293,21 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
         $source_plot_area = $source_chart->getPlotArea();
         if (!isset($source_plot_area))
             return;
-        $response_plot_area = $response_chart === false || is_null($response_chart->getPlotArea()) ?
+        $response_plot_area = !$response_chart || is_null($response_chart->getPlotArea()) ?
             false : $response_chart->getPlotArea();
         for ($index = 0; $index < $source_plot_area->getPlotGroupCount(); $index++) {
             $source_plot_group = $this->getPlotGroup($source_plot_area, $index);
-            if ($source_plot_group === false) // should not happen
+            if (!$source_plot_group) // should not happen
                 continue;
             $response_plot_group = $this->getPlotGroup($response_plot_area, $index);
             for ($index_2 = 0; $index_2 < $source_plot_group->getPlotSeriesCount(); $index_2++) {
                 $source_plot_values = $this->getPlotValues($source_plot_group, $index_2);
-                if ($source_plot_values === false) // should not happen
+                if (!$source_plot_values) // should not happen
                     continue;
                 $response_plot_values = $this->getPlotValues($response_plot_group, $index_2);
 
                 $result->chart_total += count($source_plot_values);
-                if ($response_plot_values === false)
+                if (!$response_plot_values)
                     continue;
                 $matches = count(array_intersect_assoc($source_plot_values, $response_plot_values));
                 $matches -= abs(count($source_plot_values) - count($response_plot_values));
@@ -306,13 +319,13 @@ class qtype_digitalliteracy_excel_tester implements qtype_digitalliteracy_compar
     }
 
     function getPlotGroup($area, $index) {
-        if ($area === false || !array_key_exists($index, $area->getPlotGroup()))
+        if (!$area || !array_key_exists($index, $area->getPlotGroup()))
             return false;
         return $area->getPlotGroupByIndex($index);
     }
 
     function getPlotValues($dataSeries, $index) {
-        if ($dataSeries === false || $dataSeries->getPlotValuesByIndex($index) === false)
+        if (!$dataSeries || !$dataSeries->getPlotValuesByIndex($index))
             return false;
         return $dataSeries->getPlotValuesByIndex($index)->getDataValues();
     }

@@ -6,7 +6,7 @@ use PhpOffice\PhpPresentation\Style\Color;
 use PhpOffice\PhpPresentation\Style\Alignment;
 
 
-class qtype_digitalliteracy_powerpoint_tester implements qtype_digitalliteracy_compare_interface
+class qtype_digitalliteracy_powerpoint_tester extends qtype_digitalliteracy_compare_base
 {
     public function validate_file($filepath, $filename) {
         //TODO

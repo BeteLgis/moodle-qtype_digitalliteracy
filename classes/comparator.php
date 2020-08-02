@@ -3,7 +3,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot . '/question/type/digitalliteracy/vendor/autoload.php');
-/** Common interface for file comparison */
+/** File comparison wrapper (prepares data for comparison) */
 class qtype_digitalliteracy_comparator
 {
     /**
@@ -124,7 +124,7 @@ class qtype_digitalliteracy_comparator
     }
 
     /**
-     * @param $comparator qtype_digitalliteracy_compare_interface
+     * @param $comparator qtype_digitalliteracy_compare_base
      * @param $file stored_file
      */
     public function validate_file($file, $filetypesutil, $comparator, $whitelist, $dir) {
@@ -132,15 +132,13 @@ class qtype_digitalliteracy_comparator
         if (!$filetypesutil->is_allowed_file_type($filename, $whitelist))
             return get_string('error_incorrectextension', 'qtype_digitalliteracy', $filename);
 
-        $maxlen = max(array_map('strlen', $whitelist)) + 3;
-        if (strlen($filename) < $maxlen)
+        $fullpath = $dir.'\\'. $filename;
+        if (!$file->copy_content_to($fullpath))
+            return get_string('error_filecopy', 'qtype_digitalliteracy', $filename);
+
+        if (strlen($filename) < strlen(pathinfo($fullpath, PATHINFO_EXTENSION)) + 4)
             return get_string('error_tooshortfilename', 'qtype_digitalliteracy', $filename);
 
-        $fullpath = $dir.'\\'. $filename;
-        if ($file->copy_content_to($fullpath))
-            $result[] = $fullpath;
-        else
-            return get_string('error_filecopy', 'qtype_digitalliteracy', $filename);
         return $comparator->validate_file($fullpath, $filename);
     }
 
@@ -175,8 +173,74 @@ class qtype_digitalliteracy_comparator
         return '';
     }
 }
+/** Base class - instantiates methods to override and
+ * provides mechanism for memory consumption tracking
+ */
+class qtype_digitalliteracy_compare_base {
+    protected $log = '';
+    protected $usage = -1;
 
-interface qtype_digitalliteracy_compare_interface {
-    public function compare_files($data);
-    public function validate_file($filepath, $filename);
+    protected function start() {
+        $this->usage = memory_get_usage(true);
+        global $a;
+        $a = 'aa';
+    }
+
+    protected function get_usage() {
+        if ($this->usage < 0)
+            throw new Exception('Call function \'start\' first!');
+        return memory_get_usage(true) - $this->usage;
+    }
+
+    protected function get_usage_formatted() {
+        $units = array('b','kb','mb','gb');
+        $memory = $this->get_usage();
+        $result = array();
+        if ($memory === 0) {
+            $result[] = '0 b';
+        } elseif ($memory < 0) {
+            $memory = abs($memory);
+            $result[] = '-';
+        }
+        while ($memory != 0) {
+            $index = floor(log($memory,1024));
+            if ($index < count($units)) {
+                $temp = pow(1024, $index);
+                $unit = floor($memory / $temp);
+                $result[] = $unit. ' '. $units[$index];
+                $memory -= $temp * $unit;
+            } else {
+                $result[] = '0 b';
+                break;
+            }
+        }
+        return 'Memory used: '. implode(' ', $result). ' ';
+    }
+
+    protected function log_usage() {
+        $this->log .= $this->get_usage_formatted();
+    }
+
+    public static function is_memory_exhausted($error) {
+        $memory_limit = self::return_bytes(ini_get('memory_limit'));
+        if (memory_get_usage(true) / $memory_limit > 0.8)
+            throw new Exception(get_string('error_'. $error, 'qtype_digitalliteracy'));
+    }
+
+    public static function return_bytes($size_str) {
+        switch (substr($size_str, -1))
+        {
+            case 'M': case 'm': return (int)$size_str * 1048576;
+            case 'K': case 'k': return (int)$size_str * 1024;
+            case 'G': case 'g': return (int)$size_str * 1073741824;
+            default: return $size_str;
+        }
+    }
+
+    public function compare_files($data) {
+        return array();
+    }
+    public function validate_file($filepath, $filename) {
+        return '';
+    }
 }

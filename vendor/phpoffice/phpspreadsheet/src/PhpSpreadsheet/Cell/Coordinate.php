@@ -4,6 +4,7 @@ namespace PhpOffice\PhpSpreadsheet\Cell;
 
 use PhpOffice\PhpSpreadsheet\Exception;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use qtype_digitalliteracy_compare_base;
 
 /**
  * Helper class to manipulate cell coordinates.
@@ -340,6 +341,7 @@ abstract class Coordinate
             $column = '';
             $row = 0;
 
+            qtype_digitalliteracy_compare_base::is_memory_exhausted('coordinate_344');
             sscanf($coord, '%[A-Z]%d', $column, $row);
             $sortKeys[sprintf('%3s%09d', $column, $row)] = $coord;
         }

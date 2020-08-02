@@ -11,8 +11,9 @@ $string['hastemplatefile'] = 'Does the task have a template file?';
 $string['responsefiletemplate'] = 'Response file template';
 $string['responsegradingoptions'] = 'Grading options';
 $string['significance'] = 'Significance:';
-$string['paramvalue'] = 'Value';
-$string['paramtype'] = 'Data type';
+// excel
+$string['paramvalue_excel'] = 'Value';
+$string['paramtype_'] = 'Data type';
 $string['coef_value_group'] = 'Compare text';
 $string['coef_value_group_help'] = 'Consider value and (or) data type in comparison';
 $string['parambold'] = 'Bold';
@@ -58,6 +59,10 @@ $string['templatefiles'] = 'Template file';
 $string['answerfiles'] = 'Answer file';
 $string['noattachments'] = 'No attachments';
 $string['mistakefiles'] = 'Mistakes file';
+
+// known internal errors for phpspreadsheet
+$string['error_coordinate_344'] = 'Using all row (column) selection in formulas is prohibited!';
+$string['error_worksheet_1262'] = 'Trying to process a too big file!';
 
 $string['pluginname'] = 'Digital Literacy';
 $string['pluginname_help'] = 'Autogradable Digital Literacy (Excel, Powerpoint) question.';
