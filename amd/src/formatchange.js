@@ -1,12 +1,75 @@
 
 define(function() {
+    // source https://stackoverflow.com/questions/14227388/unserialize-php-array-in-javascript
+    const PHP = {
+        parse(str) {
+            let offset = 0;
+            const values = [null];
+
+            const kick = (msg, i = offset) => { throw new Error(`Error at ${i}: ${msg}\n${str}\n${" ".repeat(i)}^`) }
+            const read = (expected, ret) => expected === str.slice(offset, offset+=expected.length) ? ret
+                : kick(`Expected '${expected}'`, offset-expected.length);
+
+            function readMatch(regex, msg, terminator=";") {
+                read(":");
+                const match = regex.exec(str.slice(offset));
+                if (!match) kick(`Exected ${msg}, but got '${str.slice(offset).match(/^[:;{}]|[^:;{}]*/)[0]}'`);
+                offset += match[0].length;
+                return read(terminator, match[0]);
+            }
+
+            function readUtf8chars(numUtf8Bytes, terminator="") {
+                const i = offset;
+                while (numUtf8Bytes > 0) {
+                    const code = str.charCodeAt(offset++);
+                    numUtf8Bytes -= code < 0x80 ? 1 : code < 0x800 || code>>11 === 0x1B ? 2 : 3;
+                }
+                return numUtf8Bytes ? kick("Invalid string length", i-2) : read(terminator, str.slice(i, offset));
+            }
+
+            const readUInt    = terminator => +readMatch(/^\d+/, "an unsigned integer", terminator);
+            const readString  = (terminator="") => readUtf8chars(readUInt(':"'), '"'+terminator);
+
+            function readKey() {
+                const typ = str[offset++];
+                return typ === "s" ? readString(";")
+                    : typ === "i" ? readUInt(";")
+                        : kick("Expected 's' or 'i' as type for a key, but got ${str[offset-1]}", offset-1);
+            }
+
+            function readObject(obj) {
+                for (let i = 0, length = readUInt(":{"); i < length; i++) obj[readKey()] = readValue();
+                return read("}", obj);
+            }
+
+            function readArray() {
+                const obj = readObject({});
+                return Object.keys(obj).some((key, i) => key !== i.toString()) ? obj : Object.values(obj);
+            }
+
+            function readValue() {
+                const typ = str[offset++].toLowerCase();
+                const ref = values.push(null)-1;
+                const val = typ === "s" ? readString(";")
+                        : typ === "a" ? readArray()  // Associative array
+                            : kick(`Unexpected type ${typ}`, offset-1);
+                if (typ !== "r") values[ref] = val;
+                return val;
+            }
+
+            const val = readValue();
+            if (offset !== str.length) kick("Unexpected trailing character");
+            return val;
+        }
+    }
+
     function process(data) {
         let params = data['params'];
-        let labels = data['labels'];
         let groups = data['groups'];
-
+        let size = parseInt(data['size']);
         let format = document.getElementById('id_responseformat');
-        format.onchange = function () {
+
+        function change(labels) {
             let value = format.options[format.selectedIndex].value;
             for (const param of params) {
                 const element = document.getElementById('id_' + param + '_label_span');
@@ -38,8 +101,7 @@ define(function() {
                 }
             })
             if (TextNodes.length !== 1) {
-                console.error("TextNodes.length !== 1.")
-                return;
+                console.log('TextNodes.length = ' + TextNodes.length + ' label id ' + label.id);
             }
             let textNode = TextNodes[0];
             let spanNode = document.createElement('span');
@@ -49,21 +111,53 @@ define(function() {
             label.replaceChild(spanNode, textNode);
         }
 
+        let success = {flag : false};
+        let active = {flag : false};
         document.body.addEventListener('mouseover', onload_succeed);
         document.body.addEventListener('keydown', onload_succeed);
+        document.body.addEventListener('scroll', onload_succeed);
         document.body.addEventListener('touchstart', onload_succeed);
         function onload_succeed() {
-            if (document.getElementById('id_' + params[0] + '_label_span') === null) {
-                onload();
+            if (active.flag) {
+                console.log('Overwriting was caught');
+                return;
             }
-            if (document.getElementById('id_' + params[0] + '_label_span') === null)
-                alert("Javascript error, please contact the developers.");
+            if (!success.flag)
+                loadWrapper();
+            if (!success.flag) { // should not happen
+                alert('Javascript error, please contact the developers.');
+                console.log('Error: digitalliteracy/amd/src/formatchange.js, line 177');
+            }
             document.body.removeEventListener('mouseover', onload_succeed);
             document.body.removeEventListener('keydown', onload_succeed);
+            document.body.removeEventListener('scroll', onload_succeed);
             document.body.removeEventListener('touchstart', onload_succeed);
+            if (success.flag)
+                console.log('Loading was successful');
+        }
+
+        function loadWrapper() {
+            active.flag = true;
+            try {
+                onload();
+            } catch (err) {
+                console.log(err.message);
+            }
+            active.flag = false;
         }
 
         function onload() {
+            let temp = document.getElementById('id_labels_container');
+            if (temp === null || !temp.hasAttribute('data-serialized')) {
+                console.log('No hidden data [or it was processed].');
+                return;
+            }
+            let data = temp.getAttribute('data-serialized');
+            let labels = PHP.parse(data);
+            temp.remove();
+            console.log(Object.keys(labels).length + ' labels were successfully parsed, container was removed');
+            success.flag = Object.keys(labels).length === size;
+
             for (const param of params) {
                 let key = 'id_' + param;
                 let label = document.getElementById(key).parentElement;
@@ -76,25 +170,22 @@ define(function() {
 
                 let element = document.getElementById(key);
                 let help = element.children.item(0).children.item(0).children.item(0);
-
-                if (!help.hasAttribute('data-content')) {
-                    console.error('Help button parsing error');
-                }
                 help.id = key + '_help_text';
+
                 let hint = help.children.item(0);
-                if (!hint.hasAttribute('title') || !help.hasAttribute('aria-label')) {
-                    console.error('Help button parsing error');
-                }
                 hint.id = key + '_help_title';
             }
+            format.addEventListener('change', function () {
+                change(labels);
+            });
             format.dispatchEvent(new CustomEvent('change'));
         }
 
         if (window.addEventListener)
-            window.addEventListener("load", onload, false);
+            window.addEventListener('load', onload_succeed, false);
         else if (window.attachEvent)
-            window.attachEvent("onload", onload);
-        else window.onload = onload;
+            window.attachEvent('onload', onload);
+        else window.onload = onload_succeed;
     }
     return {process: process};
 });

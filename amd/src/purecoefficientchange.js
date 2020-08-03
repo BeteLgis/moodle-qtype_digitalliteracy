@@ -15,10 +15,8 @@ define(function() {
         for (const coef of coefs) {
             let element = document.getElementById(coef);
             element.oninput = function () {
-                let value = element.value.replace(/[^0-9]/g, '');
-                if (value === '')
-                    value = 0;
-                value = parseInt(value, 10);
+                let str = element.value.toString().replace(/[^0-9]/g, '');
+                let value = str === '' ? 0 : parseInt(str, 10);
                 if (value > 100)
                     value = 100;
                 element.value = value;

@@ -93,7 +93,10 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
                 }
             }
         }
-        $data = array('params' => $params, 'labels' => $labels, 'groups' => $groups);
+        $src = html_writer::tag('div', '', array('class' => 'container', 'id' =>
+            'id_labels_container', 'data-serialized' => serialize($labels)));
+        $mform->addElement('html', $src);
+        $data = array('params' => $params, 'groups' => $groups, 'size' => '30');
         $PAGE->requires->js_call_amd('qtype_digitalliteracy/formatchange', 'process',
             array($data));
 
