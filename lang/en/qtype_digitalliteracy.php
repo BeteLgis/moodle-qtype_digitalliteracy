@@ -11,31 +11,54 @@ $string['hastemplatefile'] = 'Does the task have a template file?';
 $string['responsefiletemplate'] = 'Response file template';
 $string['responsegradingoptions'] = 'Grading options';
 $string['significance'] = 'Significance:';
-// excel
-$string['paramvalue_excel'] = 'Value';
-$string['paramtype_'] = 'Data type';
+// additional placeholders
 $string['coef_value_group'] = 'Compare text';
 $string['coef_value_group_help'] = 'Consider value and (or) data type in comparison';
-$string['parambold'] = 'Bold';
-$string['paramfillcolor'] = 'Fill color';
 $string['coef_format_group'] = 'Compare styles';
 $string['coef_format_group_help'] = 'Consider bold and (or) fill color in comparison';
-$string['paramcharts'] = 'Charts';
-$string['paramimages'] = 'Images';
 $string['coef_enclosures_group'] = 'Compare enclosures';
 $string['coef_enclosures_group_help'] = 'Consider charts and (or) images in comparison';
+$string['pattern_help_title'] = 'Help with {$a}';
+$string['pattern_help_text'] = '<div class="no-overflow"><p>{$a}</p></div>';
+// excel
+$string['paramvalue_excel'] = 'Value';
+$string['paramtype_excel'] = 'Data type';
+$string['coef_value_group_help_title_excel'] = 'Compare text';
+$string['coef_value_group_help_text_excel'] = 'Consider value and (or) data type in comparison';
+$string['parambold_excel'] = 'Bold';
+$string['paramfillcolor_excel'] = 'Fill color';
+$string['coef_format_group_help_title_excel'] = 'Compare styles';
+$string['coef_format_group_help_text_excel'] = 'Consider bold and (or) fill color in comparison';
+$string['paramcharts_excel'] = 'Charts';
+$string['paramimages_excel'] = 'Images';
+$string['coef_enclosures_group_help_title_excel'] = 'Compare enclosures';
+$string['coef_enclosures_group_help_text_excel'] = 'Consider charts and (or) images in comparison';
+// powerpoint
+$string['paramvalue_powerpoint'] = 'Value PP';
+$string['paramtype_powerpoint'] = 'Data type PP';
+$string['coef_value_group_help_title_powerpoint'] = 'Compare text PP';
+$string['coef_value_group_help_text_powerpoint'] = 'PP';
+$string['parambold_powerpoint'] = 'Bold PP';
+$string['paramfillcolor_powerpoint'] = 'Fill color PP';
+$string['coef_format_group_help_title_powerpoint'] = 'Compare styles PP';
+$string['coef_format_group_help_text_powerpoint'] = 'PP';
+$string['paramcharts_powerpoint'] = 'Charts PP';
+$string['paramimages_powerpoint'] = 'Images PP';
+$string['coef_enclosures_group_help_title_powerpoint'] = 'Compare enclosures PP';
+$string['coef_enclosures_group_help_text_powerpoint'] = 'PP';
+// common
 $string['excludetemplate'] = 'Exclude template';
 $string['binarygrading'] = 'Binary grading';
 $string['showmistakes'] = 'Show mistake files to students';
 $string['checkbutton'] = 'Show check button';
 $string['commonsettings'] = 'Common settings';
 $string['commonsettings_help'] = 'Exclude template - exclude from graduation all data from template, binary grading - mark is 0 or 1';
+// validation
 $string['validatecoef'] = 'Enter a float in range [0, 100], please!';
 $string['notahunred'] = 'Sum is not a hundred';
 $string['tickacheckbox'] = 'Tick one setting at least';
 $string['validationerror'] = 'Wrong comparison parameters (it\'s impossible to get max mark)';
-$string['emptyfiletypelist'] = 'Filetypelist should not be empty';
-
+$string['emptyfiletypelist'] = 'Filetype list should not be empty';
 // file errors
 $string['error_noreader'] = 'Can\'t read or accept file {$a->file}. Message: {$a->msg}';
 $string['error_incorrectextension'] = 'File with wrong extension: {$a}';

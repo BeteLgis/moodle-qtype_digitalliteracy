@@ -23,8 +23,8 @@ class qtype_digitalliteracy extends question_type {
             'responseformat', 'attachmentsrequired',
             'hastemplatefile', 'firstcoef', 'secondcoef',
             'thirdcoef', 'binarygrading', 'showmistakes',
-            'checkbutton', 'excludetemplate', 'paramfirst',
-            'paramsecond', 'parambold', 'paramfillcolor',
+            'checkbutton', 'excludetemplate', 'paramvalue',
+            'paramtype', 'parambold', 'paramfillcolor',
             'paramcharts', 'paramimages');
     }
 

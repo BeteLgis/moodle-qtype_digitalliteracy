@@ -17,8 +17,9 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         $qtype = question_bank::get_qtype('digitalliteracy');
         $options['subdirs'] = false;
 
+        $responseformats = $qtype->response_formats();
         $mform->addElement('select', 'responseformat',
-            get_string('responseformat', 'qtype_digitalliteracy'), $qtype->response_formats());
+            get_string('responseformat', 'qtype_digitalliteracy'), $responseformats);
         $mform->setDefault('responseformat', 'excel');
 
         $mform->addElement('header', 'responsefileoptions', get_string('responsefileoptions',
@@ -63,7 +64,7 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
             'paramimages' => 'advcheckbox'), 'coef_enclosures_group');
 
         $this->add_group($mform, array_fill_keys(array('excludetemplate', 'binarygrading', 'showmistakes',
-            'checkbutton'), 'advcheckbox'), 'commonsettings');
+            'checkbutton'), 'advcheckbox'), 'commonsettings', true);
 
         $mform->setDefault('firstcoef', '100');
         $mform->setDefault('secondcoef', '0');
@@ -71,17 +72,42 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         $mform->setDefault('binarygrading', '0');
         $mform->disabledIf('excludetemplate', 'hastemplatefile');
 
-        $PAGE->requires->js_call_amd('qtype_digitalliteracy/formatchange', 'process');
+        $params = array('paramvalue', 'paramtype', 'parambold', 'paramfillcolor', 'paramcharts', 'paramimages');
+        $groups = array('coef_value_group', 'coef_format_group', 'coef_enclosures_group');
+        $labels = array();
+        $responseformats = array_keys($responseformats);
+        foreach ($params as $param) {
+            foreach ($responseformats as $responseformat) {
+                $key = $param. '_'. $responseformat;
+                $labels[$key] = get_string($key, 'qtype_digitalliteracy');
+            }
+        }
+        foreach ($groups as $group) {
+            foreach (array('_help_title', '_help_text') as $item) {
+                foreach ($responseformats as $responseformat) {
+                    $key = $group. $item. '_'. $responseformat;
+                    $labels[$key] = get_string('pattern'. $item, 'qtype_digitalliteracy',
+                    get_string($key, 'qtype_digitalliteracy'));
+                    if (strlen($item) === 11)
+                        $labels[$group. '_'. $responseformat] = get_string($key, 'qtype_digitalliteracy');
+                }
+            }
+        }
+        $data = array('params' => $params, 'labels' => $labels, 'groups' => $groups);
+        $PAGE->requires->js_call_amd('qtype_digitalliteracy/formatchange', 'process',
+            array($data));
+
         $coefs = array('id_firstcoef', 'id_secondcoef', 'id_thirdcoef');
         $PAGE->requires->js_call_amd('qtype_digitalliteracy/purecoefficientchange', 'process',
             array($coefs));
     }
 
     /**
+     * @link HTML_QuickForm_element
      * @link MoodleQuickForm_group
      * @param $mform MoodleQuickForm
      */
-    private function add_group(&$mform, array $names, $groupname) {
+    private function add_group(&$mform, array $names, $groupname, $commom = false) {
         $group = array();
         foreach ($names as $name => $type) {
             if ($type === 'text') {
@@ -90,13 +116,14 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
                     'qtype_digitalliteracy'), array('size' => 1, 'maxlength' => 3));
                 $mform->setType($name, PARAM_RAW);
             } else {
-                $group[] = $mform->createElement($type, $name, get_string($name,'qtype_digitalliteracy'),
-                    null, array('data-addon' => 'anime'));
+                $identifier = $commom ? $name : $name. '_excel';
+                $group[] = $mform->createElement($type, $name, get_string($identifier,
+                    'qtype_digitalliteracy'));
                 $mform->setDefault($name, '1');
             }
         }
-        $mform->addElement('group', $groupname,
-            get_string($groupname, 'qtype_digitalliteracy'), $group, null, false);
+        $mform->addElement('group', $groupname, get_string($groupname,
+            'qtype_digitalliteracy'), $group, null, false);
         $mform->addHelpButton($groupname, $groupname, 'qtype_digitalliteracy');
         if (isset($significance))
             $mform->disabledIf($groupname, $significance, 'eq', 0);
