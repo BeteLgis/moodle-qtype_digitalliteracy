@@ -1,25 +1,8 @@
-.que.digitalliteracy textarea.qtype_digitalliteracy_response {
-    width: 100%;
+.que.digitalliteracy div.response_error {
+    background-color: #ffaaaa;
 }
 
-.que.digitalliteracy textarea.qtype_digitalliteracy_response.qtype_digitalliteracy_plain {
-    white-space: pre-wrap;
-    font: inherit;
-}
-
-.que.digitalliteracy textarea.qtype_digitalliteracy_response.qtype_digitalliteracy_monospaced {
-    white-space: pre;
-    font-family: Andale Mono, Monaco, Courier New, DejaVu Sans Mono, monospace;
-}
-
-.que.digitalliteracy .qtype_digitalliteracy_response {
-    min-height: 3em;
-}
-
-.que.digitalliteracy .qtype_digitalliteracy_response.readonly {
-    background-color: white;
-}
-
-.que.digitalliteracy div.qtype_digitalliteracy_response textarea {
-    width: 100%;
+.que.digitalliteracy div.error_text {
+    padding: 0.4em;
+    color: black;
 }

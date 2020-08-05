@@ -1,7 +1,9 @@
 <?php
 
+defined('MOODLE_INTERNAL') || die();
+
 /**
- * Class for converting attempt data for essay questions when upgrading
+ * Class for converting attempt data for digitalliteracy questions when upgrading
  * attempts to the new question engine.
  *
  * This class is used by the code in question/engine/upgrade/upgradelib.php.
