@@ -22,7 +22,7 @@ define(function() {
                 element.value = value;
 
                 let sum = 0;
-                let values = [];
+                let values = []; // choosing all non-zero and not current coefficients
                 for (const id of coefs) {
                     let item = new Item(id, parseInt(document.getElementById(id).value));
                     sum += item.value;
@@ -34,7 +34,7 @@ define(function() {
 
                 sum -= 100;
                 const part = Math.floor(sum / values.length);
-                for (const value of values) {
+                for (const value of values) { // subtract as much as we can
                     if (value.value - part >= 0) {
                         value.value -= part;
                         sum -= part;
@@ -44,10 +44,10 @@ define(function() {
                         value.value = 0;
                     }
                 }
-                values.sort((a, b) => b.value - a.value);
+                values.sort((a, b) => b.value - a.value); // sort values
                 if (values.length > 1 && sum !== 0) {
-                    while (sum-- !== 0) {
-                        let temp = values.shift();
+                    while (sum-- !== 0) {             // now start subtracting 1
+                        let temp = values.shift();    // and keeping the sort order
                         temp.value--;
                         let index = 0;
                         for (let i = 0; i < values.length; i++) {
@@ -59,13 +59,13 @@ define(function() {
                         values.splice(index, 0, temp);
                     }
                 }
-                for (const value of values) {
+                for (const value of values) { // replacing values
                     let temp = document.getElementById(value.id);
                     temp.value = value.value;
                     if (value.value === 0)
-                        temp.focus();
+                        temp.focus();   // focus to trigger $mform->disabledIf
                 }
-                element.focus();
+                element.focus(); // return focus
             });
         }
     }

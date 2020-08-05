@@ -4,7 +4,6 @@ defined('MOODLE_INTERNAL') || die();
 
 /**
  * Checks file access for digitalliteracy questions.
- *
  * @package  qtype_digitalliteracy
  * @category files
  * @param stdClass $course course object

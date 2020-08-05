@@ -6,9 +6,11 @@ require_once($CFG->dirroot.'/question/type/digitalliteracy/question.php');
 
 /** Class for rendering (and outputting) question edit form */
 class qtype_digitalliteracy_edit_form extends question_edit_form {
+
     /** Add any question-type specific form fields.
      * @Overrides question_edit_form::definition_inner
-     * @param $mform MoodleQuickForm the form being built.*/
+     * @param $mform MoodleQuickForm the form being built.
+     */
     protected function definition_inner($mform) {
         $qtype = question_bank::get_qtype('digitalliteracy');
         $options['subdirs'] = false;
@@ -64,19 +66,24 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         $this->validation_listeners();
     }
 
+    // Grading options group, only two element types supported for now
+    // 'text' [false] and 'advcheckbox' [true]
     private $group_1 = array('name' => 'coef_value_group', 'items' => ['firstcoef' => false,
         'paramvalue' => true, 'paramtype' => true]);
     private $group_2 = array('name' => 'coef_format_group', 'items' => ['secondcoef' => false,
         'parambold' => true, 'paramfillcolor' => true]);
     private $group_3 = array('name' => 'coef_enclosures_group', 'items' => ['thirdcoef' => false,
         'paramcharts' => true, 'paramimages' => true]);
+    // Common settings
     private $common_settings_group = array('name' => 'commonsettings', 'items' =>
         ['excludetemplate' => true, 'binarygrading' => true,
             'showmistakes' => true, 'checkbutton' => true]);
     /**
+     * Adds group [listed above] to the form
+     * @param $mform MoodleQuickForm
+     * @param bool $commom is the flag indicating common group
      * @link HTML_QuickForm_element
      * @link MoodleQuickForm_group
-     * @param $mform MoodleQuickForm
      */
     private function add_group(&$mform, $group, $commom = false) {
         $groupname = $group['name'];
@@ -103,12 +110,17 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
             $mform->disabledIf($groupname, $significance, 'eq', 0);
     }
 
+    /**
+     * Creates necessary data structure for response format change action [select element]
+     * and passes that data to JS (AMD)
+     */
     private function responseformat_change_listeners(&$mform, $responseformats) {
         $labels = array();
 
         $params = array('paramvalue', 'paramtype', 'parambold', 'paramfillcolor', 'paramcharts', 'paramimages');
         $groups = array('coef_value_group', 'coef_format_group', 'coef_enclosures_group');
         $responseformats = array_keys($responseformats);
+        // saving all labels for various response options into $labels array
         foreach ($params as $param) {
             foreach ($responseformats as $responseformat) {
                 $key = $param. '_'. $responseformat;
@@ -127,10 +139,13 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
             }
         }
         $labels['filetype_description'] = get_string('filetype_description', 'qtype_digitalliteracy');
+
+        // a little trick to avoid error "more than 1024 symbols were passed to an AMD JS script"
         $src = html_writer::tag('div', '', array('class' => 'data_container', 'id' =>
-            'id_labels_container', 'data-serialized' => serialize($labels)));
+            'id_labels_container', 'data-serialized' => serialize($labels))); // set serialized content
         $mform->addElement('html', $src);
 
+        // used for renaming filetypelist
         $types = array('matches' => ['excel' => 'spreadsheet', 'powerpoint' => 'presentation'],
             'defaults' => ['excel' => ['value' => '.xlsx', 'description' =>
                 get_string('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','mimetypes')],
@@ -140,13 +155,16 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
 
         global $PAGE;
         $coefs = array('id_firstcoef', 'id_secondcoef', 'id_thirdcoef');
-        $PAGE->requires->js_call_amd('qtype_digitalliteracy/purecoefficientchange', 'process',
+        $PAGE->requires->js_call_amd('qtype_digitalliteracy/coefficientchange', 'process',
             array($coefs));
         $data = array('params' => $params, 'groups' => $groups, 'types' => $types);
         $PAGE->requires->js_call_amd('qtype_digitalliteracy/formatchange', 'process',
             array($data));
     }
 
+    /** Add validation messages to the HTML document [using AMD JS]
+     * and trigger them on corresponding events
+     */
     private function validation_listeners() {
         $items = array();
         foreach($this->group_1['items'] as $item => $type) {
@@ -169,9 +187,6 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
             array($data));
     }
 
-    /** Perform an preprocessing needed on the data passed to set_data() before it is used to initialise the form.
-     * @Overrides question_edit_form::data_preprocessing
-     * @param $question object the data being passed to the form. */
     protected function data_preprocessing($question) {
         $question = parent::data_preprocessing($question);
 
@@ -189,12 +204,6 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         return $question;
     }
 
-    /** Dummy stub method - override if you needed to perform some extra validation.
-     * If there are errors return array of errors (“fieldname”=>“error message”), otherwise true if ok.
-     * Server side rules do not work for uploaded files, implement serverside rules here if needed.
-     * @Overrides question_edit_form::validation
-     * @param array $files array of uploaded files "element_name"=>tmp_file_path
-     * @param array $fromform array of ("fieldname"=>value) of submitted data*/
     public function validation($fromform, $files) {
         $errors = parent::validation($fromform, $files);
         // coefs - coef [significance text area] => group association
@@ -215,6 +224,7 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         return $errors;
     }
 
+    /** Validates coefficients (int int range [0,100] and sum of them is 100) */
     private function validatecoefs($coefs, $fromform, &$errors) {
         $options = array(
             'options' => array(
@@ -224,13 +234,13 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
             )
         );
         $values = array();
-        foreach ($coefs as $value => $group) { // validate significance value
+        foreach ($coefs as $value => $group) { // validates value
             if (($res = filter_var($fromform[$value], FILTER_VALIDATE_INT, $options)) < 0) {
                 $errors[$group] = get_string('validatecoef', 'qtype_digitalliteracy');
             } else
                 $values[$value] = $res;
         }
-        if (count($values) === 3 && array_sum($values) != 100) { // validate significances sum
+        if (count($values) === 3 && array_sum($values) != 100) { // validates sum
             foreach ($coefs as $value => $group) {
                 $errors[$group] = get_string('notahunred', 'qtype_digitalliteracy');
             }
@@ -238,6 +248,7 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         return $values;
     }
 
+    /** Validates params (Value, Calculated Value, Bold and so on) */
     private function validateparams($coefs, $groups, $fromform, $values, &$errors) {
         foreach ($values as $key => $value) {
             if ($value != 0) { // for each coefficient with non-zero significance validate params - checkboxes
@@ -256,6 +267,7 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         }
     }
 
+    /** Validates uploaded files (test run of {@link qtype_digitalliteracy_question::grade_response()}) */
     private function validatedata($fromform, &$errors) {
         global $USER;
         $error_types = $this->error_interpreter();
@@ -263,7 +275,7 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         $question->contextid = context_user::instance($USER->id)->id;
 
         $response = array('attachments' => new question_file_saver($fromform['sourcefiles_filemanager'],
-            'qtype_digitalliteracy', 'sourcefiles'), 'flag' => '1');
+            'qtype_digitalliteracy', 'sourcefiles'), 'validation' => true);
         $flag = false;
         if (($error = $question->validate_response($response)) !== '') {
             $errors[$error_types['sourcefiles']] = $error;
@@ -278,7 +290,8 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
             return;
 
         if ($question->hastemplatefile && $question->excludetemplate)
-            $question->templatefiles = $fromform['templatefiles_filemanager'];
+            $question->templatefiles_draftid = $fromform['templatefiles_filemanager'];
+
         $result = $question->grade_response($response);
         list($fraction, $state) = $result;
         if ($fraction != 1.0) {
@@ -287,12 +300,18 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         }
     }
 
+    /** Used just for convenience [more handy element matching] */
     private function error_interpreter() {
         return array('templatefiles' => 'templatefiles_filemanager',
             'sourcefiles' => 'sourcefiles_filemanager',
             '' => 'commonsettings'); // '' == NULL check https://www.php.net/manual/en/language.types.array.php
     }
 
+    /** Load formdata into question
+     * Separate function created as it is used in two places
+     * {@link qtype_digitalliteracy_edit_form::data_preprocessing()}
+     * and {@link qtype_digitalliteracy_edit_form::validatedata()}
+     */
     private function load_formdata_into_question(&$question, $newquestion) {
         $extraquestionfields = (new qtype_digitalliteracy())->extra_question_fields();
         if (is_array($extraquestionfields)) {
@@ -314,6 +333,7 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         return '';
     }
 
+    /** Send files for validation */
     private function validate_files($fromform, $element) {
         global $USER;
         $fs = get_file_storage();

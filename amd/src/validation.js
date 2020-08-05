@@ -30,7 +30,7 @@ define(function() {
             element.addEventListener('mouseover', validate);
         }
 
-        function showOrHide(group, key) {
+        function showOrHide(group, key) { // Shows or hides error
             const error = document.getElementById('id_error_' + group);
             if (key.toString().length === 0) {
                 error.innerText = '';
@@ -41,7 +41,7 @@ define(function() {
             }
         }
 
-        function validateString(element, coef) { // Validate for int in range [0;100]
+        function validateString(element, coef) { // Validating string (int in range [0;100] is needed)
             let str = element.value.toString().replace(/[0-9]/g, '');
             if (str.length !== 0) {
                 showOrHide(coefs[coef], 'validatecoef');
@@ -59,7 +59,7 @@ define(function() {
             }
         }
 
-        function countTrue(required, object) {
+        function countTrue(required, object) { // counting true properties of object
             let counter = 0;
             for (const property in object) {
                 if (object[property])
@@ -79,7 +79,7 @@ define(function() {
             }
         }
 
-        function clear() {
+        function clear() { // clear all previous errors
             for (const coef in coefs) {
                 if (!sharedObject[coef])
                     showOrHide(coefs[coef], '');

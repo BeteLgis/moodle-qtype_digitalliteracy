@@ -74,6 +74,7 @@ define(function() {
         const fileTypeInput = document.getElementById('id_filetypeslist');
         fileTypeInput.setAttribute('readonly', 'true');
 
+        // parsing (and after removing) our container
         const temp = document.getElementById('id_labels_container');
         const serializedData = temp.getAttribute('data-serialized');
         const labels = PHP.parse(serializedData);
@@ -126,7 +127,7 @@ define(function() {
             label.replaceChild(spanNode, textNode);
         }
 
-        function changeLabels() { // set new labels (depending on responseformat)
+        function changeLabels() { // set new labels (depending on responseformat value)
             const value = format.options[format.selectedIndex].value;
             for (const param of params) {
                 const element = document.getElementById('id_' + param + '_label_span');
@@ -146,6 +147,7 @@ define(function() {
                 text.setAttribute('data-content', labels[group + '_help_text_' + value]);
             }
 
+            // changing filetypelist labels (or inline text)
             fileTypeInput.value = fileTypeDefaults[value]['value'];
             const description = document.querySelector('[data-filetypesdescriptions="id_filetypeslist"]');
             description.firstChild.innerHTML = labels['filetype_description'];
@@ -159,12 +161,14 @@ define(function() {
         const bodyChecker = function () {
             const body = document.querySelector('[data-filetypesbrowserbody="id_filetypeslist"]');
             if (body === null || body.hasAttribute('data-used')) {
-                setTimeout(bodyChecker, 100);
+                setTimeout(bodyChecker, 100); // File type browser body (Modal) is firstly
+                                                     // loaded when user click 'Choose' for the first time.
+                                                     // Here I wait for that moment
             } else {
                 // body is always rerendered, that's why I use attribute to deteriorate the old from the new one
                 body.setAttribute('data-used', 'true');
                 const value = format.options[format.selectedIndex].value;
-                for (const child of body.children) {
+                for (const child of body.children) { // leaving only type, which are acceptable now
                     let option = '';
                     if (child.getAttribute('data-filetypesbrowserkey') !== fileTypesMatches[value]) {
                         option = 'none';
@@ -174,14 +178,14 @@ define(function() {
             }
         }
 
-        const spanChecker = function() { // button is loaded by yui, so we wait
+        const spanChecker = function() {
             const span = document.querySelector('[data-filetypesbrowser="id_filetypeslist"]');
             if (span.childElementCount > 0) {
                 span.firstChild.addEventListener('click', function () {
                     bodyChecker();
                 });
             }
-            else {
+            else { // button is loaded by yui [not instantly], so we wait
                 setTimeout(spanChecker, 100);
             }
         }

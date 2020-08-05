@@ -22,8 +22,8 @@ function shutDownFunction() {
 register_shutdown_function('shutDownFunction');
 
 /** Excel file (spreadsheet) comparator */
-class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_base
-{
+class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_base {
+
     public function validate_file($filepath, $filename) {
         $res = new stdClass();
         try {
@@ -52,14 +52,9 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
         }
         return '';
     }
-    /** Main comparison method
-     * @return array {@link question_file_saver} and int fraction
-     * @throws \PhpOffice\PhpSpreadsheet\Exception
-     * @throws \PhpOffice\PhpSpreadsheet\Reader\Exception
-     */
-    public function compare_files($data)
-    {
-        // preparing files
+
+    public function compare_files($data) {
+        // preparing files and creating a reader
         $filetype = IOFactory::identify($data->response_path);
         $reader = IOFactory::createReader($filetype);
         $reader->setReadEmptyCells(false);
@@ -82,7 +77,7 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
         $fraction = $this->compare_with_coefficients($data, $sheet_source,
             $sheet_response, $sheet_template);
 
-        if ($data->flag)
+        if ($data->validation)
             return array('fraction' => $fraction);
         $mistakes_name = 'Mistakes_' . $data->mistakes_name;
         $mistakes_path = $data->request_directory . '\\' . $mistakes_name;
@@ -96,20 +91,19 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
         generate_question_file_saver(array($mistakes_name => $mistakes_path)), 'fraction' => $fraction);
     }
 
-    /**
+    /** Compare considering coefficients and
+     * @return int fraction
      * @param $sheet_source Worksheet\Worksheet
-     * @param $sheet_response Worksheet\Worksheet
+     * @param $sheet_response Worksheet\Worksheet passed by reference as we mark mistakes there!
      * @param $sheet_template Worksheet\Worksheet
      */
     private function compare_with_coefficients($data, $sheet_source,
-                                               &$sheet_response, $sheet_template)
-    {
-//        echo 'Before load '. memory_get_usage()/1024.0 / 1024 . " MB \r\n"; TODO
+                                               &$sheet_response, $sheet_template) {
         $temp = $sheet_source->getCellCollection()->getCoordinates();
         $temp_2 = $sheet_response->getCellCollection()->getCoordinates();
         $cell_collection = array_merge(array_flip($temp), array_flip($temp_2));
 
-        $result = new stdClass();
+        $result = new stdClass(); // contains all comparison results as integer
         $result->value_matches = 0; $result->style_matches = 0; $result->cell_total = 0;
         $result->chart_matches = 0; $result->chart_total = 0;
         $types = $this->get_compare_types($data);
@@ -120,7 +114,7 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
             $cell_template = isset($sheet_template) ? $sheet_template
                 ->getCell($coordinate, false) : null;
 
-            if (!$this->compare($types, $result, $cell_source, $cell_response, $cell_template) && !$data->flag)
+            if (!$this->compare($types, $result, $cell_source, $cell_response, $cell_template) && !$data->validation)
                 $cell_response->getStyle()->getFill()->setFillType(
                     \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('ff0000');
         }
@@ -128,17 +122,23 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
         if ($data->thirdcoef > 0)
             $this->compare_enclosures($sheet_source, $sheet_response, $result);
 
+        // preventing divide by zero
         if ($result->cell_total === 0)
             $result->cell_total = 1;
         if ($result->chart_total === 0)
             $result->chart_total = 1;
 
+        // computing mark depending on correctly filled cell and (or) charts
         return ($data->firstcoef * $result->value_matches +
                 $data->secondcoef * $result->style_matches)
             / $result->cell_total / 100 + $data->thirdcoef * $result->chart_matches / $result->chart_total / 100;
     }
 
-
+    /**
+     * @return array containing all cell comparison functions
+     * (then called by {@link call_user_func()})
+     * Such realization let us easily add new params and (or) coefficients
+     */
     private function get_compare_types($data) {
         $res = array();
         if ($data->firstcoef) {
@@ -162,6 +162,7 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
         return $res;
     }
 
+    /** Compare cell to [corresponding] cell */
     private function compare(array $types, &$result, $cell_source, $cell_response, $cell_template) {
         if (!isset($cell_source)) {
             $result->cell_total++;
@@ -181,9 +182,9 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
         return $res['equal'];
     }
 
-    /**
-     * @param array $types represents different types of a cell comparison (text or styles)
-     * Cells are equal if all criterions of all significant types [significance > 0] are equal.
+    /** Cells are equal if all criterion values of all significant types
+     * [significance > 0] match (are equal).
+     * @param array $types {@link qtype_digitalliteracy_excel_tester::get_compare_types()}
      */
     private function compare_cells(array $types, Cell $cell_1, Cell $cell_2) {
         $temp = 0;
@@ -214,6 +215,7 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
         return $temp === count($criterions);
     }
 
+    /** Visibility means filter visibility */
     function compare_visibility(Cell $cell_1, Cell $cell_2) {
         return $this->is_visible($cell_1) === $this->is_visible($cell_2);
     }
@@ -246,9 +248,9 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
     }
 
     /**
+     * Compares charts
      * @param $sheet_source Worksheet\Worksheet
      * @param $sheet_response Worksheet\Worksheet
-     * @param $result
      */
     function compare_enclosures($sheet_source, $sheet_response, &$result) {
         foreach ($sheet_source->getChartNames() as $chart_name)
@@ -289,6 +291,7 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
             $axis->getLineProperty('type');
     }
 
+    /** Compares plot area's data {@link \PhpOffice\PhpSpreadsheet\Chart\DataSeries} */
     function compare_plot_area($source_chart, $response_chart, &$result) {
         $source_plot_area = $source_chart->getPlotArea();
         if (!isset($source_plot_area))
@@ -330,31 +333,22 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
         return $dataSeries->getPlotValuesByIndex($index)->getDataValues();
     }
 }
-/**  Define a Read Filter class implementing IReadFilter  */
-class ChunkReadFilter implements IReadFilter
-{
+
+/** Could be used for filtered read */
+class ChunkReadFilter implements IReadFilter {
     private $startRow = 0;
     private $endRow = 0;
 
-    /**
-     * Set the list of rows that we want to read.
-     *
-     * @param mixed $startRow
-     * @param mixed $chunkSize
-     */
-    public function setRows($startRow, $chunkSize)
-    {
+    public function setRows($startRow, $chunkSize) {
         $this->startRow = $startRow;
         $this->endRow = $startRow + $chunkSize;
     }
 
-    public function readCell($column, $row, $worksheetName = '')
-    {
+    public function readCell($column, $row, $worksheetName = '') {
         //  Only read the heading row, and the rows that are configured in $this->_startRow and $this->_endRow
         if (($row == 1) || ($row >= $this->startRow && $row < $this->endRow)) {
             return true;
         }
-
         return false;
     }
 }

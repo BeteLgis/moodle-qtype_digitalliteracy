@@ -2,12 +2,12 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-/** Question attemps renderer (displayed to the student) */
+/** Question attempts renderer (displayed to the student) */
 class qtype_digitalliteracy_renderer extends qtype_renderer {
+
     /** Generate the display of the formulation part of the question.
-     * This is the area that contains the question text, and the controls
-     * for students to input their answers. Some question types also embed bits of feedback,
-     * for example ticks and crosses, in this area.
+     * This is the area that contains the question text, files
+     * and the controls for students to input their answers.
      * @Overrides qtype_renderer::formulation_and_controls
      * @param question_attempt $qa the question attempt to display.
      * @param question_display_options $options controls what should and should not be displayed. */
@@ -71,6 +71,7 @@ class qtype_digitalliteracy_renderer extends qtype_renderer {
         return $result;
     }
 
+    /** @return bool check a user's roles in the course, used to determine when to show source files */
     private function only_a_student_or_empty() {
         global $COURSE, $USER;
         $rolesarr = array();
@@ -83,7 +84,7 @@ class qtype_digitalliteracy_renderer extends qtype_renderer {
         return $amount === 0 || ($amount === 1 && in_array("Student", $rolesarr));
     }
 
-    /** Diplays template files to a student (or teacher just for convenience) */
+    /** Displays filearea files */
     private function get_files_from_filearea(question_attempt $qa, $contextid, $component, $filearea, $itemid) {
         $fs = get_file_storage();
         $files = $fs->get_area_files($contextid, $component,
@@ -91,20 +92,22 @@ class qtype_digitalliteracy_renderer extends qtype_renderer {
         return $this->file_linker($qa, $files, $component === 'question');
     }
 
-    private function file_linker(question_attempt $qa, array $files, bool $flag) {
+    /** @return string creates and returns links to download each file from filearea */
+    private function file_linker(question_attempt $qa, array $files, bool $response) {
         $output = array();
         foreach ($files as $file) {
             $output[] = html_writer::tag('p', html_writer::link(
-                $flag ? $qa->get_response_file_url($file) : $this->get_url($file) ,
+                $response ? $qa->get_response_file_url($file) : $this->get_url($file) ,
                 $this->output->pix_icon(file_file_icon($file), get_mimetype_description($file),
                     'moodle', array('class' => 'icon')) . ' ' . s($file->get_filename())));
         }
         return implode($output);
     }
 
-    /** Creates URLs for template files for students to download them
-     * @param $file {@link stored_file}
-     * @return moodle_url
+    /**
+     * Creates URLs for template files for students to download them
+     * @param $file stored_file file itself (already stored in moodle filestorage)
+     * @return moodle_url url to download the file
      */
     private function get_url($file) {
         return moodle_url::make_pluginfile_url($file->get_contextid(), $file->get_component(),
@@ -122,10 +125,11 @@ class qtype_digitalliteracy_renderer extends qtype_renderer {
         $files = $qa->get_last_qt_files($name, $options->context->id);
         return $this->file_linker($qa, $files, true);
     }
+
     /**
      * Displays the input control for when the student should upload a single file.
      * @param question_attempt $qa the question attempt to display.
-     * @param int $numallowed the maximum number of attachments allowed. -1 = unlimited.
+     * @param int $numallowed the maximum number of attachments allowed.
      * @param question_display_options $options controls what should and should
      *      not be displayed. Used to get the context.
      */
@@ -160,6 +164,11 @@ class qtype_digitalliteracy_renderer extends qtype_renderer {
                 'value' => $pickeroptions->itemid)) . $text;
     }
 
+    /**
+     * Displays feedback when error occurred in {@link qtype_digitalliteracy_question::grade_response()}
+     * @param question_attempt $qa the question attempt to display.
+     * @param question_display_options $options controls what should and should not be displayed.
+     */
     public function feedback(question_attempt $qa, question_display_options $options) {
         $optionsclone = clone($options);
 
@@ -169,6 +178,10 @@ class qtype_digitalliteracy_renderer extends qtype_renderer {
         return parent::feedback($qa, $optionsclone);
     }
 
+    /**
+     * Shows error message to a student
+     * @param question_attempt $qa the question attempt to display.
+     */
     public function specific_feedback(question_attempt $qa)
     {
         $error = $qa->get_last_step()->get_qt_var('_error');

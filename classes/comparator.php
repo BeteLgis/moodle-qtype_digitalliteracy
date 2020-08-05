@@ -4,15 +4,15 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot . '/question/type/digitalliteracy/vendor/autoload.php');
 /** File comparison wrapper (prepares data for comparison) */
-class qtype_digitalliteracy_comparator
-{
-    /**
-     * @return array|bool|float|int|string
+class qtype_digitalliteracy_comparator {
+    /** Create request directory, copy files (source, response and, optionally, template),
+     * choose comparator (excel or powerpoint) and, finally compare files [i.e grade response]
+     * @return array containing error or {@link question_file_saver} and fraction
      */
     public function grade_response(array $response, &$data) {
         try {
             $request_directory = make_request_directory();
-            $data->flag ? $this->copy_files_validation($data, $response, $request_directory) :
+            $data->validation ? $this->copy_files_validation($data, $response, $request_directory) :
                 $this->copy_files($data, $response, $request_directory);
             $data->request_directory = $request_directory;
             $comparator = self::switch($data->responseformat);
@@ -26,6 +26,7 @@ class qtype_digitalliteracy_comparator
         return $result;
     }
 
+    /** File copy when not validation mode */
     private function copy_files(&$data, array $response, $dir) {
         $data->source_path = $this->get_filearea_files('source', $data->contextid,
             'qtype_digitalliteracy', 'sourcefiles', $data->id, $dir)[0];
@@ -39,12 +40,13 @@ class qtype_digitalliteracy_comparator
         $data->mistakes_name = array_values($files)[0]->get_filename();
     }
 
+    /** File copy when in validation mode */
     private function copy_files_validation(&$data, array $response, $dir) {
         $files = $response['attachments']->get_files();
         $data->source_path = $this->get_paths_from_files('source', $files, $dir)[0];
-        if (isset($data->templatefiles)) {
+        if (isset($data->templatefiles_draftid)) {
             $data->template_path = $this->get_filearea_files('template', $data->contextid,
-                'user', 'draft', $data->templatefiles, $dir)[0];
+                'user', 'draft', $data->templatefiles_draftid, $dir)[0];
         }
         $data->response_path = $this->get_paths_from_files('response', $files, $dir)[0];;
     }
@@ -78,8 +80,9 @@ class qtype_digitalliteracy_comparator
         return $result;
     }
 
-    /**
-     * @param array $files ($name => $path) pairs
+    /** Saves mistakes files or any other files, created after grading is completed
+     * and send into this method
+     * @param array $files file $name => file $path [in request directory] pairs
      */
     public static function generate_question_file_saver(array $files) {
         global $USER;
@@ -108,6 +111,7 @@ class qtype_digitalliteracy_comparator
         return new question_file_saver($draftitemid, 'question', 'response_mistakes');
     }
 
+    /** Switches comparator type */
     public static function switch($responseformat) {
         switch ($responseformat)
         {
@@ -124,6 +128,8 @@ class qtype_digitalliteracy_comparator
     }
 
     /**
+     * Validates file
+     * @param $filetypesutil \core_form\filetypes_util
      * @param $comparator qtype_digitalliteracy_compare_base
      * @param $file stored_file
      */
@@ -142,6 +148,7 @@ class qtype_digitalliteracy_comparator
         return $comparator->validate_file($fullpath, $filename);
     }
 
+    /** Validate several files, it counts their amount */
     public function validate_files($files, $responseformat, $filetypeslist, $attachmentsrequired) {
         try {
             $comparator = self::switch($responseformat);
@@ -180,18 +187,19 @@ class qtype_digitalliteracy_compare_base {
     protected $log = '';
     protected $usage = -1;
 
+    /** Memorize current memory consumption */
     protected function start() {
         $this->usage = memory_get_usage(true);
-        global $a;
-        $a = 'aa';
     }
 
+    /** @return int script memory consumtion */
     protected function get_usage() {
         if ($this->usage < 0)
             throw new Exception('Call function \'start\' first!');
         return memory_get_usage(true) - $this->usage;
     }
 
+    /** Converts memory usage into more readable format */
     protected function get_usage_formatted() {
         $units = array('b','kb','mb','gb');
         $memory = $this->get_usage();
@@ -217,16 +225,19 @@ class qtype_digitalliteracy_compare_base {
         return 'Memory used: '. implode(' ', $result). ' ';
     }
 
+    /** Saves usage into log */
     protected function log_usage() {
         $this->log .= $this->get_usage_formatted();
     }
 
+    /** Determines when a file loaded is too big to be processed */
     public static function is_memory_exhausted($error) {
         $memory_limit = self::return_bytes(ini_get('memory_limit'));
         if (memory_get_usage(true) / $memory_limit > 0.8)
             throw new Exception(get_string('error_'. $error, 'qtype_digitalliteracy'));
     }
 
+    /** Convert M, K or G key into bytes size */
     public static function return_bytes($size_str) {
         switch (substr($size_str, -1))
         {
@@ -237,9 +248,17 @@ class qtype_digitalliteracy_compare_base {
         }
     }
 
+    /** Main comparison method
+     * @param $data {@link qtype_digitalliteracy_question::response_data()}
+     * @return array {@link question_file_saver} and fraction
+     */
     public function compare_files($data) {
         return array();
     }
+
+    /** Validates a file inside a determined comparator
+     * @return string containing error, empty string otherwise
+     */
     public function validate_file($filepath, $filename) {
         return '';
     }
