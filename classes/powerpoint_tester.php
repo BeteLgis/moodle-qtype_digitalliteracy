@@ -4,20 +4,19 @@ use PhpOffice\PhpPresentation\PhpPresentation;
 use PhpOffice\PhpPresentation\IOFactory;
 use PhpOffice\PhpPresentation\Style\Color;
 use PhpOffice\PhpPresentation\Style\Alignment;
-system('pip install python-pptx');
 
-class qtype_digitalliteracy_powerpoint_tester implements qtype_digitalliteracy_comparator
+
+class qtype_digitalliteracy_powerpoint_tester extends qtype_digitalliteracy_compare_base
 {
-    public function validate()
-    {
-        // TODO: Implement validate() method.
+    public function validate_file($filepath, $filename) {
+        //TODO
+        return 'Power point is not supported yet!';
     }
 
-    public function compareFiles($source, $sample)
+    public function compare_files($data)
     {
-        // TODO validation!
-        $samplePptx = IOFactory::load($source);
-        $analysPptx = IOFactory::load($sample);
+        $samplePptx = IOFactory::load($data->response_path);
+        $analysPptx = IOFactory::load($data->source_path);
 
         $cmpSlides = $this->compareSlidesCount($samplePptx, $analysPptx);
         $analysText = $this->testFontsText($samplePptx, $analysPptx);
@@ -33,7 +32,15 @@ class qtype_digitalliteracy_powerpoint_tester implements qtype_digitalliteracy_c
         $max += $cmpShapes[1] + $cmpSlides[1] + $analysText[1] + $cmpLayouts[1];
         if ($max == 0)
             $max = 1;
-        return $scored/$max;
+        $fraction = $scored/$max;
+        if ($data->flag)
+            return array('fraction' => $fraction);
+        $mistakes_name = 'Mistakes_' . $data->mistakes_name;
+        $mistakes_path = $data->request_directory . '\\' . $mistakes_name;
+        $writer = IOFactory::createWriter($samplePptx);
+        $writer->save($mistakes_path);
+        return array('file_saver' => qtype_digitalliteracy_comparator::
+        generate_question_file_saver($mistakes_name, $mistakes_path), 'fraction' => $fraction);
     }
 
     /*
