@@ -157,7 +157,7 @@ class qtype_digitalliteracy_comparator
                 'qtype_digitalliteracy', $attachmentsrequired);
         }
 
-        if ($attachcount > 0) {
+        if ($attachcount > 0) { // designed to process more than 1 file (just in case)
             $result = array();
             $filetypesutil = new \core_form\filetypes_util();
             $whitelist = $filetypesutil->normalize_file_types($filetypeslist);

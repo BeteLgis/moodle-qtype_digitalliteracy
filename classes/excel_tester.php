@@ -146,7 +146,7 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
             if ($data->paramvalue)
                 $items[] = 'compare_value';
             if ($data->paramtype)
-                $items[] = 'compare_datatype';
+                $items[] = 'compare_calculated_value';
             $res[] = array('matches' => 'value_matches',
                 'criterions' => $items);
         }

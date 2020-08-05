@@ -14,7 +14,7 @@ define(function() {
     function process(coefs) {
         for (const coef of coefs) {
             let element = document.getElementById(coef);
-            element.oninput = function () {
+            element.addEventListener('input', function () {
                 let str = element.value.toString().replace(/[^0-9]/g, '');
                 let value = str === '' ? 0 : parseInt(str, 10);
                 if (value > 100)
@@ -66,7 +66,7 @@ define(function() {
                         temp.focus();
                 }
                 element.focus();
-            }
+            });
         }
     }
     return {process: process};

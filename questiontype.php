@@ -130,8 +130,8 @@ class qtype_digitalliteracy extends question_type {
     public function attachments_required_options() {
         return array(
             1 => '1',
-            2 => '2',
-            3 => '3'
+//            2 => '2',
+//            3 => '3'
         );
     }
     /**

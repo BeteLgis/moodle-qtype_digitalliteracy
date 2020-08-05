@@ -64,13 +64,70 @@ define(function() {
     }
 
     function process(data) {
-        let params = data['params'];
-        let groups = data['groups'];
-        let size = parseInt(data['size']);
-        let format = document.getElementById('id_responseformat');
+        const params = data['params'];
+        const groups = data['groups'];
+        const types = data['types'];
 
-        function change(labels) {
-            let value = format.options[format.selectedIndex].value;
+        const fileTypesMatches = types['matches'];
+        const fileTypeDefaults = types['defaults'];
+        const format = document.getElementById('id_responseformat');
+        const fileTypeInput = document.getElementById('id_filetypeslist');
+        fileTypeInput.setAttribute('readonly', 'true');
+
+        const temp = document.getElementById('id_labels_container');
+        const serializedData = temp.getAttribute('data-serialized');
+        const labels = PHP.parse(serializedData);
+        temp.remove();
+        console.log(Object.keys(labels).length + ' labels were successfully parsed, container was removed');
+
+        for (const param of params) { // setting unique keys for params labels
+            const key = 'id_' + param;
+            const label = document.getElementById(key).parentElement;
+            textWrapper(label, key, 'id', '_label_span');
+        }
+
+        for (const group of groups) { // setting unique keys for groups labels
+            const key = 'fgroup_id_' + group;
+            const label = document.querySelector('[for="' + key + '"]');
+            textWrapper(label, key, 'id', '_label_span');
+
+            // setting unique keys for groups help buttons
+            const element = document.getElementById(key);
+            const help = element.children.item(0).children.item(0).children.item(0);
+            help.id = key + '_help_text';
+
+            const hint = help.children.item(0);
+            hint.id = key + '_help_title';
+        }
+
+        format.addEventListener('change', function () {
+            changeLabels();
+        });
+        format.dispatchEvent(new CustomEvent('change'));
+
+        function textWrapper(label, name, key, postfix) { // put (wrap) label text into a span
+            label.normalize();
+            const TextNodes = [];
+            label.childNodes.forEach(function (node) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    const text = typeof node.textContent == 'string' ? node.textContent : node.innerText;
+                    if (text.trim() !== "")
+                        TextNodes.push(node);
+                }
+            })
+            if (TextNodes.length !== 1) {
+                console.log('TextNodes.length = ' + TextNodes.length + ' label id ' + label.id);
+            }
+            const textNode = TextNodes[0];
+            const spanNode = document.createElement('span');
+            const text = typeof textNode.textContent == 'string' ? textNode.textContent : textNode.innerText;
+            spanNode.appendChild(document.createTextNode(text));
+            spanNode[key] = name + postfix;
+            label.replaceChild(spanNode, textNode);
+        }
+
+        function changeLabels() { // set new labels (depending on responseformat)
+            const value = format.options[format.selectedIndex].value;
             for (const param of params) {
                 const element = document.getElementById('id_' + param + '_label_span');
                 element.replaceChild(document.createTextNode(labels[param + '_' + value]),
@@ -88,104 +145,47 @@ define(function() {
                 const text = document.getElementById('fgroup_id_' + group + '_help_text');
                 text.setAttribute('data-content', labels[group + '_help_text_' + value]);
             }
+
+            fileTypeInput.value = fileTypeDefaults[value]['value'];
+            const description = document.querySelector('[data-filetypesdescriptions="id_filetypeslist"]');
+            description.firstChild.innerHTML = labels['filetype_description'];
+            const descriptionSample = description.firstChild.firstChild.firstChild;
+            descriptionSample.firstChild.replaceChild(document.createTextNode(
+                fileTypeDefaults[value]['description'] + ' '), descriptionSample.firstChild.firstChild);
+            descriptionSample.lastChild.replaceChild(document.createTextNode(fileTypeInput.value),
+                descriptionSample.lastChild.firstChild);
         }
 
-        function text_wrapper(label, name) {
-            label.normalize();
-            let TextNodes = [];
-            label.childNodes.forEach(function (node) {
-                if (node.nodeType === Node.TEXT_NODE) {
-                    let text = typeof node.textContent == 'string' ? node.textContent : node.innerText;
-                    if (text.trim() !== "")
-                        TextNodes.push(node);
+        const bodyChecker = function () {
+            const body = document.querySelector('[data-filetypesbrowserbody="id_filetypeslist"]');
+            if (body === null || body.hasAttribute('data-used')) {
+                setTimeout(bodyChecker, 100);
+            } else {
+                // body is always rerendered, that's why I use attribute to deteriorate the old from the new one
+                body.setAttribute('data-used', 'true');
+                const value = format.options[format.selectedIndex].value;
+                for (const child of body.children) {
+                    let option = '';
+                    if (child.getAttribute('data-filetypesbrowserkey') !== fileTypesMatches[value]) {
+                        option = 'none';
+                    }
+                    child.style.display = option;
                 }
-            })
-            if (TextNodes.length !== 1) {
-                console.log('TextNodes.length = ' + TextNodes.length + ' label id ' + label.id);
             }
-            let textNode = TextNodes[0];
-            let spanNode = document.createElement('span');
-            let text = typeof textNode.textContent == 'string' ? textNode.textContent : textNode.innerText;
-            spanNode.appendChild(document.createTextNode(text));
-            spanNode.id = name + '_label_span';
-            label.replaceChild(spanNode, textNode);
         }
 
-        let success = {flag : false};
-        let active = {flag : false};
-        document.body.addEventListener('mouseover', onload_succeed);
-        document.body.addEventListener('keydown', onload_succeed);
-        document.body.addEventListener('scroll', onload_succeed);
-        document.body.addEventListener('touchstart', onload_succeed);
-        function onload_succeed() {
-            if (active.flag) {
-                console.log('Overwriting was caught');
-                return;
+        const spanChecker = function() { // button is loaded by yui, so we wait
+            const span = document.querySelector('[data-filetypesbrowser="id_filetypeslist"]');
+            if (span.childElementCount > 0) {
+                span.firstChild.addEventListener('click', function () {
+                    bodyChecker();
+                });
             }
-            if (!success.flag)
-                loadWrapper();
-            if (!success.flag) { // should not happen
-                alert('Javascript error, please contact the developers.');
-                console.log('Error: digitalliteracy/amd/src/formatchange.js, line 177');
+            else {
+                setTimeout(spanChecker, 100);
             }
-            document.body.removeEventListener('mouseover', onload_succeed);
-            document.body.removeEventListener('keydown', onload_succeed);
-            document.body.removeEventListener('scroll', onload_succeed);
-            document.body.removeEventListener('touchstart', onload_succeed);
-            if (success.flag)
-                console.log('Loading was successful');
         }
-
-        function loadWrapper() {
-            active.flag = true;
-            try {
-                onload();
-            } catch (err) {
-                console.log(err.message);
-            }
-            active.flag = false;
-        }
-
-        function onload() {
-            let temp = document.getElementById('id_labels_container');
-            if (temp === null || !temp.hasAttribute('data-serialized')) {
-                console.log('No hidden data [or it was processed].');
-                return;
-            }
-            let data = temp.getAttribute('data-serialized');
-            let labels = PHP.parse(data);
-            temp.remove();
-            console.log(Object.keys(labels).length + ' labels were successfully parsed, container was removed');
-            success.flag = Object.keys(labels).length === size;
-
-            for (const param of params) {
-                let key = 'id_' + param;
-                let label = document.getElementById(key).parentElement;
-                text_wrapper(label, key);
-            }
-            for (const group of groups) {
-                let key = 'fgroup_id_' + group;
-                const label = document.querySelector('[for="' + key + '"]');
-                text_wrapper(label, key);
-
-                let element = document.getElementById(key);
-                let help = element.children.item(0).children.item(0).children.item(0);
-                help.id = key + '_help_text';
-
-                let hint = help.children.item(0);
-                hint.id = key + '_help_title';
-            }
-            format.addEventListener('change', function () {
-                change(labels);
-            });
-            format.dispatchEvent(new CustomEvent('change'));
-        }
-
-        if (window.addEventListener)
-            window.addEventListener('load', onload_succeed, false);
-        else if (window.attachEvent)
-            window.attachEvent('onload', onload);
-        else window.onload = onload_succeed;
+        spanChecker();
     }
     return {process: process};
 });

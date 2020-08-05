@@ -10,10 +10,10 @@ class qtype_digitalliteracy_powerpoint_tester extends qtype_digitalliteracy_comp
 {
     public function validate_file($filepath, $filename) {
         //TODO
-        return '';
+        return 'Power point is not supported yet!';
     }
 
-    public function compare_files(&$data)
+    public function compare_files($data)
     {
         $samplePptx = IOFactory::load($data->response_path);
         $analysPptx = IOFactory::load($data->source_path);
