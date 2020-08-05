@@ -1,7 +1,7 @@
 # DIGITAL LITERACY
 Version 0.9.0 August 2020
 
-Authors: Ainur Sharipov and Fedor Deryabin, Higher Schoold of Economics, Russia
+Authors: Ainur Sharipov and Fedor Deryabin, Higher School of Economics, Russia
 # INSTALLATION
 DigitalLiteracy requires two separate plug-ins: one for the question type and one for the special interactive behaviour. 
 
