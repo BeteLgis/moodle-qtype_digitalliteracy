@@ -158,7 +158,7 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         $PAGE->requires->js_call_amd('qtype_digitalliteracy/coefficientchange', 'process',
             array($coefs));
         $data = array('params' => $params, 'groups' => $groups, 'types' => $types);
-        $PAGE->requires->js_call_amd('qtype_digitalliteracy/formatchange', 'process',
+        $PAGE->requires->js_call_amd('qtype_digitalliteracy/labelchange', 'process',
             array($data));
     }
 
@@ -213,10 +213,15 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         $groups = array('coef_value_group' => ['paramvalue', 'paramtype'], 'coef_format_group' =>
         ['parambold', 'paramfillcolor'], 'coef_enclosures_group' => ['paramcharts', 'paramimages']);
 
-        $values = $this->validatecoefs($coefs, $fromform, $errors);
-        $this->validateparams($coefs, $groups, $fromform, $values, $errors);
-        if ($fromform['filetypeslist'] === '')
-            $errors['filetypeslist'] = get_string('emptyfiletypelist', 'qtype_digitalliteracy');
+        $error_msg = array();
+        $values = $this->validatecoefs($coefs, $fromform, $error_msg);
+        $this->validateparams($coefs, $groups, $fromform, $values, $error_msg);
+
+        foreach ($error_msg as $group => $value) {
+            $errors[$group] = implode(' | ', $value);
+        }
+
+        $this->validatefiletypelis($fromform,$errors);
 
         if (empty($errors))
             $this->validatedata($fromform, $errors);
@@ -225,7 +230,7 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
     }
 
     /** Validates coefficients (int int range [0,100] and sum of them is 100) */
-    private function validatecoefs($coefs, $fromform, &$errors) {
+    private function validatecoefs($coefs, $fromform, &$error_msg) {
         $options = array(
             'options' => array(
                 'default' => -1,
@@ -235,21 +240,23 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         );
         $values = array();
         foreach ($coefs as $value => $group) { // validates value
+            $error_msg[$group] = array();
             if (($res = filter_var($fromform[$value], FILTER_VALIDATE_INT, $options)) < 0) {
-                $errors[$group] = get_string('validatecoef', 'qtype_digitalliteracy');
+                $error_msg[$group][] = get_string('validatecoef', 'qtype_digitalliteracy');
+                $values[$value] = -1;
             } else
                 $values[$value] = $res;
         }
-        if (count($values) === 3 && array_sum($values) != 100) { // validates sum
+        if (!in_array(-1, $values) && array_sum($values) != 100) { // validates sum
             foreach ($coefs as $value => $group) {
-                $errors[$group] = get_string('notahunred', 'qtype_digitalliteracy');
+                $error_msg[$group][] = get_string('notahunred', 'qtype_digitalliteracy');
             }
         }
         return $values;
     }
 
     /** Validates params (Value, Calculated Value, Bold and so on) */
-    private function validateparams($coefs, $groups, $fromform, $values, &$errors) {
+    private function validateparams($coefs, $groups, $fromform, $values, &$error_msg) {
         foreach ($values as $key => $value) {
             if ($value != 0) { // for each coefficient with non-zero significance validate params - checkboxes
                 $counter = false;
@@ -260,10 +267,22 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
                     }
                 }
                 if (!$counter) { // concatenate error string for a group === $coefs[$key]
-                    $prefix = empty($errors[$coefs[$key]]) ? '' : $errors[$coefs[$key]] . ' | ';
-                    $errors[$coefs[$key]] = $prefix . get_string('tickacheckbox', 'qtype_digitalliteracy');
+                    $error_msg[$coefs[$key]][] = get_string('tickacheckbox', 'qtype_digitalliteracy');
                 }
             }
+        }
+    }
+
+    private function validatefiletypelis($fromform, &$errors) {
+        if ($fromform['filetypeslist'] === '') {
+            $errors['filetypeslist'] = get_string('emptyfiletypelist', 'qtype_digitalliteracy');
+            return;
+        }
+        $qtype = question_bank::get_qtype('digitalliteracy');
+        $accepted = call_user_func(array($qtype, $fromform['responseformat']. '_filetypes'));
+        if (count($types = array_diff(explode(',', $fromform['filetypeslist']), $accepted)) > 0) {
+            $errors['filetypeslist'] = get_string('incorrectfiletypes', 'qtype_digitalliteracy',
+                implode(', ', $types));
         }
     }
 

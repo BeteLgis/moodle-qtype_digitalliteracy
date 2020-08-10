@@ -104,7 +104,7 @@ define(function() {
         format.addEventListener('change', function () {
             changeLabels();
         });
-        format.dispatchEvent(new CustomEvent('change'));
+        changeLabels(true);
 
         function textWrapper(label, name, key, postfix) { // put (wrap) label text into a span
             label.normalize();
@@ -127,7 +127,7 @@ define(function() {
             label.replaceChild(spanNode, textNode);
         }
 
-        function changeLabels() { // set new labels (depending on responseformat value)
+        function changeLabels(load = false) { // set new labels (depending on responseformat value)
             const value = format.options[format.selectedIndex].value;
             for (const param of params) {
                 const element = document.getElementById('id_' + param + '_label_span');
@@ -146,16 +146,21 @@ define(function() {
                 const text = document.getElementById('fgroup_id_' + group + '_help_text');
                 text.setAttribute('data-content', labels[group + '_help_text_' + value]);
             }
+            filetypes_description(load, value);
+        }
 
-            // changing filetypelist labels (or inline text)
-            fileTypeInput.value = fileTypeDefaults[value]['value'];
-            const description = document.querySelector('[data-filetypesdescriptions="id_filetypeslist"]');
-            description.firstChild.innerHTML = labels['filetype_description'];
-            const descriptionSample = description.firstChild.firstChild.firstChild;
-            descriptionSample.firstChild.replaceChild(document.createTextNode(
-                fileTypeDefaults[value]['description'] + ' '), descriptionSample.firstChild.firstChild);
-            descriptionSample.lastChild.replaceChild(document.createTextNode(fileTypeInput.value),
-                descriptionSample.lastChild.firstChild);
+        // changing filetypelist labels
+        function filetypes_description(load, value) {
+            if (!load) {
+                fileTypeInput.value = fileTypeDefaults[value]['value'];
+                const description = document.querySelector('[data-filetypesdescriptions="id_filetypeslist"]');
+                description.firstChild.innerHTML = labels['filetype_description'];
+                const descriptionSample = description.firstChild.firstChild.firstChild;
+                descriptionSample.firstChild.replaceChild(document.createTextNode(
+                    fileTypeDefaults[value]['description'] + ' '), descriptionSample.firstChild.firstChild);
+                descriptionSample.lastChild.replaceChild(document.createTextNode(fileTypeInput.value),
+                    descriptionSample.lastChild.firstChild);
+            }
         }
 
         const bodyChecker = function () {
@@ -172,9 +177,31 @@ define(function() {
                     let option = '';
                     if (child.getAttribute('data-filetypesbrowserkey') !== fileTypesMatches[value]) {
                         option = 'none';
+                    } else {
+                        const browserkeys = child.querySelectorAll('input[data-filetypesbrowserkey]' +
+                            '[type="checkbox"]');
+                        disableLastKey(browserkeys);
+                        for (const browserkey of browserkeys) {
+                            browserkey.addEventListener('change', function () {disableLastKey(browserkeys)});
+                        }
                     }
                     child.style.display = option;
                 }
+            }
+        }
+
+        function disableLastKey(browserkeys) {
+            let counter = 0;
+            let memory = {};
+            browserkeys.forEach(function (e) {
+                e.disabled = false;
+                if (e.checked) {
+                    counter++;
+                    memory = e;
+                }
+            });
+            if (counter === 1) {
+                memory.disabled = true;
             }
         }
 

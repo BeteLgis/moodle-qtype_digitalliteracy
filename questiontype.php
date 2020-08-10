@@ -119,8 +119,16 @@ class qtype_digitalliteracy extends question_type {
      */
     public function attachments_filetypes_option() {
         return array(
-            'onlytypes' => ['ods', 'xlsx', 'xls', 'csv', 'pptx', 'odp']
+            'onlytypes' => array_merge($this->excel_filetypes(), $this->powerpoint_filetypes())
         );
+    }
+
+    public function excel_filetypes() {
+        return array('.ods', '.xlsx', '.xls', '.csv');
+    }
+
+    public function powerpoint_filetypes() {
+        return array('.pptx', '.odp');
     }
 
     /**

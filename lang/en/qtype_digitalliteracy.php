@@ -60,6 +60,7 @@ $string['notahunred'] = 'Sum is not a hundred';
 $string['tickacheckbox'] = 'Tick one setting at least';
 $string['validationerror'] = 'Wrong comparison parameters (it\'s impossible to get max mark)';
 $string['emptyfiletypelist'] = 'Filetype list should not be empty';
+$string['incorrectfiletypes'] = 'Incorrect file extensions: {$a}';
 // file errors
 $string['error_noreader'] = 'Can\'t read or accept file {$a->file}. Message: {$a->msg}';
 $string['error_incorrectextension'] = 'File with wrong extension: {$a}';

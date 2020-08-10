@@ -1,62 +1,87 @@
+
 define(function() {
     function process(data) {
         const params = {};
         const coefs = {};
-        const items = data['items'];
-        const errors = data['errors'];
-        const sharedObject = {};
+        const groupByCoef = {};
+        const paramsByGroup = {};
+        const sharedObject = {}; // [groupname] => bool - coef has a value parse error
+        const errorsContainer = {}; // [groupname] => [errorType] => string (errorType - 'coef' or 'param')
 
-        for (const property in items) {
-            const item = items[property];
+        for (const property in data['items']) {
+            const item = data['items'][property];
+            const group = item['group'];
             if (item['type']) {
-                params[property] = item['group'];
+                params[property] = group;
             } else {
-                coefs[property] = item['group'];
+                coefs[property] = group;
+                errorsContainer[group] = {'coef' : '', 'param' : ''};
+                groupByCoef[group] = property;
             }
         }
 
         for (const coef in coefs) { // Validate coefficients
             sharedObject[coef] = false;
+            const group = coefs[coef];
             const key = 'id_' + coef;
             const element = document.getElementById(key);
             const validate = function () {
-                clear();
-                validateString(element, coef);
+                validateString(element, coef, group);
                 if (countTrue(0, sharedObject)) {
                     validateSum();
                 }
+                showOrHide(group);
             };
-            element.addEventListener('input', validate);
-            element.addEventListener('mouseover', validate);
+            const validateGroup = function() {
+               validate();
+               for (const param in paramsByGroup[group]) {
+                   const paramElement = document.getElementById('id_' + param);
+                   paramElement.dispatchEvent(new CustomEvent('change'));
+               }
+            };
+            element.addEventListener('input', validateGroup);
+            element.addEventListener('dblclick', validateGroup);
+            validate();
         }
 
-        function showOrHide(group, key) { // Shows or hides error
+        function showOrHide(group) {
+            let message = [];
+            for (const type in errorsContainer[group]) {
+                if (errorsContainer[group][type].toString().length !== 0) {
+                    message.push(data['errors'][errorsContainer[group][type]]);
+                }
+            }
             const error = document.getElementById('id_error_' + group);
-            if (key.toString().length === 0) {
+            const res = message.join(' | ');
+            if (res.length === 0) {
                 error.innerText = '';
                 error.setAttribute('style', '');
             } else {
-                error.innerText = errors[key];
+                error.innerText = res;
                 error.setAttribute('style', 'display: block');
             }
         }
 
-        function validateString(element, coef) { // Validating string (int in range [0;100] is needed)
-            let str = element.value.toString().replace(/[0-9]/g, '');
-            if (str.length !== 0) {
-                showOrHide(coefs[coef], 'validatecoef');
+        function validateString(element, coef, group) { // Validating string (int in range [0;100] is needed)
+            const res = isValid(element.value.toString());
+            if (res < 0) {
+                errorsContainer[group]['coef'] = 'validatecoef';
                 sharedObject[coef] = true;
             } else {
-                str = element.value.toString();
-                let value = str === '' ? -1 : parseInt(str, 10);
-                if (value < 0 || value > 100) {
-                    showOrHide(coefs[coef], 'validatecoef');
-                    sharedObject[coef] = true;
-                } else {
-                    showOrHide(coefs[coef], '');
-                    sharedObject[coef] = false;
-                }
+                if (res === 0)
+                    errorsContainer[group]['param'] = '';
+                errorsContainer[group]['coef'] = '';
+                sharedObject[coef] = false;
             }
+        }
+
+        function isValid(string) {
+            const str = string.replace(/[^0-9]/g, '');
+            if (str.length !== 0) {
+                const value = parseInt(str, 10);
+                return value >= 0 && value <= 100 ? value : -1;
+            }
+            return -1;
         }
 
         function countTrue(required, object) { // counting true properties of object
@@ -75,34 +100,35 @@ define(function() {
                 sum += parseInt(document.getElementById(key).value, 10);
             }
             for (const coef in coefs) {
-                showOrHide(coefs[coef], sum !== 100 ? 'notahunred' : '');
-            }
-        }
-
-        function clear() { // clear all previous errors
-            for (const coef in coefs) {
-                if (!sharedObject[coef])
-                    showOrHide(coefs[coef], '');
+                const group = coefs[coef];
+                errorsContainer[group]['coef'] = sum !== 100 ? 'notahunred' : '';
+                showOrHide(group);
             }
         }
 
         function validateParams() { // at least 1 param in each group should be chosen
-            const groups = {};
             for (const param in params) {
                 const key = 'id_' + param;
                 const element = document.getElementById(key);
                 const group = params[param];
-                if (typeof groups[group] === "undefined") {
-                    groups[group] = {};
+                if (typeof paramsByGroup[group] === "undefined") {
+                    paramsByGroup[group] = {};
                 }
-                groups[group][param] = element.checked;
+                paramsByGroup[group][param] = element.checked;
 
                 const validate = function () {
-                    groups[group][param] = element.checked;
-                    showOrHide(group, countTrue(0, groups[group]) ? 'tickacheckbox' : '');
+                    const coef = document.getElementById('id_' + groupByCoef[group]);
+                    const res = isValid(coef.value.toString());
+                    paramsByGroup[group][param] = element.checked;
+                    if (res !== 0) {
+                        errorsContainer[group]['param'] = countTrue(0, paramsByGroup[group]) ? 'tickacheckbox' : '';
+                    } else {
+                        errorsContainer[group]['param'] = '';
+                    }
+                    showOrHide(group);
                 };
                 element.addEventListener('change', validate);
-                element.addEventListener('mouseover', validate);
+                validate();
             }
         }
         validateParams();
