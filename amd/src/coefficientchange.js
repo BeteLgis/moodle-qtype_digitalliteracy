@@ -14,8 +14,8 @@ define(function() {
 
     function process(coefs) {
         for (const coef of coefs) {
-            let element = document.getElementById(coef);
-            element.addEventListener('input', function () {
+            const element = document.getElementById(coef);
+            function onInput (load = false) {
                 const str = element.value.toString().replace(/[^0-9]/g, '');
                 if (str.length !== 0) {
                     let value = parseInt(str, 10);
@@ -28,29 +28,44 @@ define(function() {
                 }
 
                 let sum = 0;
-                for (const id of coefs) {
-                    let value = document.getElementById(id).value;
-                    sum += value.length === 0 ? 0 : parseInt(value, 10);
+                const newCoefs = [];
+                for (const coefId of coefs) {
+                    const coefIterator = document.getElementById(coefId);
+                    if (!coefIterator.hidden) {
+                        newCoefs.push(coefId);
+                        sum += coefIterator.value.length === 0 ? 0 : parseInt(coefIterator.value, 10);
+                    }
                 }
 
                 if (sum <= 100) {
-                    updatePlaceholders(sum);
+                    updatePlaceholders(sum, newCoefs);
                 } else {
-                    updateValues(sum, element);
+                    updateValues(sum, coef, newCoefs);
                 }
+                if (!load)
+                    updateErrors(coefs);
+            }
+            element.addEventListener('input', function () {
+                onInput();
             });
+            onInput(true);
 
-            element.addEventListener('dblclick', setPlaceholder);
-            function setPlaceholder() {
+            function updateErrors(coefs) {
+                for (const coefId of coefs)
+                    document.getElementById(coefId).dispatchEvent(new CustomEvent('update'));
+            }
+
+            element.addEventListener('dblclick', function () {
                 if (element.placeholder.length !== 0)
                     element.value = element.placeholder;
-            }
+                element.dispatchEvent(new CustomEvent('update'));
+            });
         }
         
-        function updatePlaceholders(sum) {
+        function updatePlaceholders(sum, newCoefs) {
             let values = [];
-            for (const id of coefs) {
-                let item = new Item(id, document.getElementById(id).value);
+            for (const coefId of newCoefs) {
+                let item = new Item(coefId, document.getElementById(coefId).value);
                 if (item.placeHolder)
                     values.push(item);
             }
@@ -74,12 +89,12 @@ define(function() {
                 document.getElementById(value.id).placeholder = value.value;
         }
 
-        function updateValues(sum, element) {
+        function updateValues(sum, coef, newCoefs) {
             sum -= 100;
             let values = [];
-            for (const id of coefs) {
-                let item = new Item(id, document.getElementById(id).value);
-                if (item.value !== 0 && id !== element.id)
+            for (const coefId of newCoefs) {
+                let item = new Item(coefId, document.getElementById(coefId).value);
+                if (item.value !== 0 && coefId !== coef)
                     values.push(item);
             }
 
@@ -109,13 +124,8 @@ define(function() {
                     values.splice(index, 0, temp);
                 }
             }
-            for (const value of values) { // replacing values
-                let temp = document.getElementById(value.id);
-                temp.value = value.value;
-                if (value.value === 0)
-                    temp.focus();   // focus to trigger $mform->disabledIf
-            }
-            element.focus(); // return focus
+            for (const value of values) // replacing values
+                document.getElementById(value.id).value = value.value;
         }
     }
     return {process: process};

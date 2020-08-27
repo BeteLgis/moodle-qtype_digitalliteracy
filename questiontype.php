@@ -18,13 +18,10 @@ class qtype_digitalliteracy extends question_type {
     }
 
     public function extra_question_fields() {
-        return array('qtype_digitalliteracy_option',
+        return array_merge(array('qtype_digitalliteracy_option',
             'responseformat', 'attachmentsrequired',
-            'hastemplatefile', 'firstcoef', 'secondcoef',
-            'thirdcoef', 'binarygrading', 'showmistakes',
-            'checkbutton', 'excludetemplate', 'paramvalue',
-            'paramtype', 'parambold', 'paramfillcolor',
-            'paramcharts', 'paramimages');
+            'hastemplatefile', 'excludetemplate'),
+            (new qtype_digitalliteracy_test_settings())->get_all_options());
     }
 
     /**

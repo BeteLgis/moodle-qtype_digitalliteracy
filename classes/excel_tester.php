@@ -22,7 +22,7 @@ function shutDownFunction() {
 register_shutdown_function('shutDownFunction');
 
 /** Excel file (spreadsheet) comparator */
-class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_base {
+class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_tester_base {
 
     public function validate_file($filepath, $filename) {
         $res = new stdClass();
@@ -34,9 +34,9 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
             $reader->setIncludeCharts(false);
             $spreadsheet = $reader->load($filepath);
             Calculation::getInstance($spreadsheet)->disableCalculationCache();
-            if (($count = $spreadsheet->getSheetCount()) != 1)
+            if (($count = $spreadsheet->getSheetCount()) !== 1)
                 throw new Exception('Spreadsheet has '. $count. ' sheets ('.
-                    implode(', ', $spreadsheet->getSheetNames()). '). 1 required!');
+                    implode(', ', $spreadsheet->getSheetNames()). '). Only 1 is supported (for now)!');
             $sheet = $spreadsheet->getSheet(0);
             $cell_collection = array_flip($sheet->getCellCollection()->getCoordinates());
             if (count($cell_collection) === 0)
@@ -45,6 +45,10 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
                 $cell = $sheet->getCell($coordinate, false);
                 $cell->getCalculatedValue(); // looking for infinite loops (like 'F:F' range)
             }
+
+            if (($count = $sheet->getChartCount()) !== 1)
+                throw new Exception('Sheet  with title '. $sheet->getTitle(). ' has '.
+                    $count. 'charts. Only 1 is supported (for now)!');
         } catch (Exception $ex) {
             $res->file = $filename;
             $res->msg = $ex->getMessage();
@@ -58,9 +62,9 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
         $filetype = IOFactory::identify($data->response_path);
         $reader = IOFactory::createReader($filetype);
         $reader->setReadEmptyCells(false);
-        $data->thirdcoef > 0 ? $reader->setIncludeCharts(true) : $reader->setIncludeCharts(false);
-        $data->secondcoef == 0 && $data->thirdcoef == 0 ? $reader->setReadDataOnly(true) :
-            $reader->setReadDataOnly(false);
+        $data->groupthreecoef > 0 ? $reader->setIncludeCharts(true) : $reader->setIncludeCharts(false);
+//        $data->grouptwocoef == 0 && $data->groupthreecoef == 0 ? $reader->setReadDataOnly(true) :
+//            $reader->setReadDataOnly(false); Deletes hidden rows!
         $spreadsheet_response = $reader->load($data->response_path);
         $spreadsheet_source = $reader->load($data->source_path);
         Calculation::getInstance($spreadsheet_response)->disableCalculationCache();
@@ -85,7 +89,7 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
         $writer = IOFactory::createWriter($spreadsheet_response, $filetype);
         $writer->setUseDiskCaching(true, $data->request_directory);
         $writer->setPreCalculateFormulas(false);
-        $data->thirdcoef > 0 ? $writer->setIncludeCharts(true) : $writer->setIncludeCharts(false);
+        $data->groupthreecoef > 0 ? $writer->setIncludeCharts(true) : $writer->setIncludeCharts(false);
         $writer->save($mistakes_path);
         return array('file_saver' => qtype_digitalliteracy_comparator::
         generate_question_file_saver(array($mistakes_name => $mistakes_path)), 'fraction' => $fraction);
@@ -99,28 +103,36 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
      */
     private function compare_with_coefficients($data, $sheet_source,
                                                &$sheet_response, $sheet_template) {
-        $temp = $sheet_source->getCellCollection()->getCoordinates();
-        $temp_2 = $sheet_response->getCellCollection()->getCoordinates();
-        $cell_collection = array_merge(array_flip($temp), array_flip($temp_2));
-
         $result = new stdClass(); // contains all comparison results as integer
-        $result->value_matches = 0; $result->style_matches = 0; $result->cell_total = 0;
-        $result->chart_matches = 0; $result->chart_total = 0;
-        $types = $this->get_compare_types($data);
+        $result->value_matches = 0;
+        $result->style_matches = 0;
+        $result->cell_total = 0;
+        $result->chart_matches = 0;
+        $result->chart_total = 0;
 
-        foreach ($cell_collection as $coordinate => $index) {
-            $cell_source = $sheet_source->getCell($coordinate, false);
-            $cell_response = $sheet_response->getCell($coordinate, true);
-            $cell_template = isset($sheet_template) ? $sheet_template
-                ->getCell($coordinate, false) : null;
+        if ($data->grouponecoef > 0 || $data->grouptwocoef > 0) {
+            $temp = $sheet_source->getCellCollection()->getCoordinates();
+            $temp_2 = $sheet_response->getCellCollection()->getCoordinates();
+            $cell_collection = array_merge(array_flip($temp), array_flip($temp_2));
 
-            if (!$this->compare($types, $result, $cell_source, $cell_response, $cell_template) && !$data->validation)
-                $cell_response->getStyle()->getFill()->setFillType(
-                    \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('ff0000');
+            $types = $this->get_compare_types($data);
+
+            foreach ($cell_collection as $coordinate => $index) {
+                $cell_source = $sheet_source->getCell($coordinate, false);
+                $cell_response = $sheet_response->getCell($coordinate, true);
+                $cell_template = isset($sheet_template) ? $sheet_template
+                    ->getCell($coordinate, false) : null;
+
+                if (!$this->compare($types, $result, $cell_source, $cell_response, $cell_template) && !$data->validation)
+                    $cell_response->getStyle()->getFill()->setFillType(
+                        \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('ff0000');
+            }
         }
 
-        if ($data->thirdcoef > 0)
-            $this->compare_enclosures($sheet_source, $sheet_response, $result);
+        if ($data->groupthreecoef > 0) {
+            $settings = $this->get_charts_compare($data);
+            $this->compare_enclosures($settings, $sheet_source, $sheet_response, $result);
+        }
 
         // preventing divide by zero
         if ($result->cell_total === 0)
@@ -129,56 +141,80 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
             $result->chart_total = 1;
 
         // computing mark depending on correctly filled cell and (or) charts
-        return ($data->firstcoef * $result->value_matches +
-                $data->secondcoef * $result->style_matches)
-            / $result->cell_total / 100 + $data->thirdcoef * $result->chart_matches / $result->chart_total / 100;
+        return ($data->grouponecoef * $result->value_matches +
+                $data->grouptwocoef * $result->style_matches)
+            / $result->cell_total / 100 + $data->groupthreecoef * $result->chart_matches / $result->chart_total / 100;
     }
 
     /**
      * @return array containing all cell comparison functions
      * (then called by {@link call_user_func()})
      * Such realization let us easily add new params and (or) coefficients
+     * @link qtype_digitalliteracy_question::response_data()
      */
     private function get_compare_types($data) {
         $res = array();
-        if ($data->firstcoef) {
+        if ($data->grouponecoef) {
             $items = array();
-            if ($data->paramvalue)
+            if ($data->grouponeparamone)
                 $items[] = 'compare_value';
-            if ($data->paramtype)
+            if ($data->grouponeparamtwo)
                 $items[] = 'compare_calculated_value';
+            if ($data->grouponeparamthree)
+                $items[] = 'compare_visibility';
+            if ($data->grouponeparamfour)
+                $items[] = 'compare_mergerange';
             $res[] = array('matches' => 'value_matches',
                 'criterions' => $items);
         }
-        if ($data->secondcoef) {
+        if ($data->grouptwocoef) {
             $items = array();
-            if ($data->parambold)
+            if ($data->grouptwoparamone)
                 $items[] = 'compare_bold';
-            if ($data->paramfillcolor)
+            if ($data->grouptwoparamtwo)
                 $items[] = 'compare_fillcolor';
+            if ($data->grouptwoparamthree)
+                $items[] = 'compare_numberformat';
+            if ($data->grouptwoparamfour)
+                $items[] = 'compare_fonts';
             $res[] = array('matches' => 'style_matches',
                 'criterions' => $items);
         }
         return $res;
     }
 
+    private function get_charts_compare($data) {
+        $items = array();
+        if ($data->groupthreeparamone)
+            $items[] = 'compare_chart_type';
+        if ($data->groupthreeparamtwo)
+            $items[] = 'compare_plot_values';
+        if ($data->groupthreeparamthree)
+            $items[] = 'compare_legend';
+        if ($data->groupthreeparamfour)
+            $items[] = 'compare_axis_x';
+        return array('matches' => 'chart_matches',
+            'criterions' => $items);
+    }
+
     /** Compare cell to [corresponding] cell */
     private function compare(array $types, &$result, $cell_source, $cell_response, $cell_template) {
-        if (!isset($cell_source)) {
-            $result->cell_total++;
+        $result->cell_total++;
+
+        if (!isset($cell_source))
             return false;
-        }
 
         $res = $this->compare_cells($types, $cell_source, $cell_response);
         if (isset($cell_template)) {
             if ($res['equal'] && $this->compare_cells($types, $cell_source, $cell_template)['equal'])
                 return true;
         }
+//        if ($data->param && !$res['equal'])
+//            return false;
         foreach ($types as $type) {
             if ($res[$type['matches']])
                 $result->{$type['matches']}++;
         }
-        $result->cell_total++;
         return $res['equal'];
     }
 
@@ -201,13 +237,11 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
     }
 
     /**
-     * @param array $criterions [value, data type or bold, fill color]
+     * @param array $criterions [value, calculated value (or bold, fill color) etc]
      * @return bool True if all criterions of the current comparison type [text, styles] are equal, false otherwise.
      */
     private function compare_cells_by_type(array $criterions, Cell $cell_1, Cell $cell_2) {
         $temp = 0;
-        if (!$this->compare_visibility($cell_1, $cell_2))
-            return false;
         foreach ($criterions as $criterion) {
             if (call_user_func(array($this, $criterion), $cell_1, $cell_2))
                 $temp++;
@@ -221,8 +255,14 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
     }
 
     function is_visible(Cell $cell) {
-        return $cell->getWorksheet()->getRowDimension($cell->getRow())->getVisible()
-            && $cell->getWorksheet()->getColumnDimension($cell->getColumn())->getVisible();
+        $row_dimension = $cell->getWorksheet()->getRowDimension($cell->getRow());
+        $column_dimension = $cell->getWorksheet()->getColumnDimension($cell->getColumn());
+        return $row_dimension && $column_dimension ? $row_dimension->getVisible()
+            && $column_dimension->getVisible() : null;
+    }
+
+    function compare_mergerange(Cell $cell_1, Cell $cell_2) {
+        return $cell_1->getMergeRange() === $cell_2->getMergeRange();
     }
 
     function compare_value(Cell $cell_1, Cell $cell_2) {
@@ -231,10 +271,6 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
 
     function compare_calculated_value(Cell $cell_1, Cell $cell_2) {
         return $cell_1->getCalculatedValue() === $cell_2->getCalculatedValue();
-    }
-
-    function compare_datatype(Cell $cell_1, Cell $cell_2) {
-        return $cell_1->getDataType() === $cell_2->getDataType();
     }
 
     function compare_bold(Cell $cell_1, Cell $cell_2) {
@@ -247,48 +283,66 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
             === $cell_2->getStyle()->getFill()->getStartColor()->getARGB();
     }
 
+    function compare_numberformat(Cell $cell_1, Cell $cell_2) {
+        return $cell_1->getStyle()->getNumberFormat()->getFormatCode()
+            === $cell_2->getStyle()->getNumberFormat()->getFormatCode();
+    }
+
+    function compare_fonts(Cell $cell_1, Cell $cell_2) {
+        return $this->describe_font($cell_1)
+            == $this->describe_font($cell_2);
+    }
+
+    function describe_font(Cell $cell) {
+        $description = array();
+        $font = $cell->getStyle()->getFont();
+        $description[] = $font->getName();
+        $description[] = $font->getSize();
+        $description[] = $font->getUnderline();
+        $description[] = $font->getColor()->getARGB();
+        $description[] = $font->getItalic();
+        return $description;
+    }
+
     /**
      * Compares charts
      * @param $sheet_source Worksheet\Worksheet
      * @param $sheet_response Worksheet\Worksheet
      */
-    function compare_enclosures($sheet_source, $sheet_response, &$result) {
-        foreach ($sheet_source->getChartNames() as $chart_name)
-        {
+    function compare_enclosures($settings, $sheet_source, $sheet_response, &$result) {
+        foreach ($sheet_source->getChartNames() as $chart_name) {
             $chart_source = $sheet_source->getChartByName($chart_name);
             $chart_response = $sheet_response->getChartByName($chart_name);
-            $this->compare_formatting($chart_source, $chart_response, $result);
+            $this->compare_charts($settings, $chart_source, $chart_response, $result);
         }
     }
 
-    function compare_formatting($source, $response, &$result) {
-//        if ($this->get_title($source->getTitle()) === $this->get_title($response->getTitle()))
-//            $result->chart_matches++;
-//        if ($this->get_title($source->getXAxisLabel()) === $this->get_title($response->getXAxisLabel()))
-//            $result->chart_matches++;
-//        if ($this->get_axis($source, true) === $this->get_axis($response, true))
-//            $result->chart_matches++;
-//        if ($this->get_title($source->getYAxisLabel()) === $this->get_title($response->getYAxisLabel()))
-//            $result->chart_matches++;
-//        if ($this->get_axis($source, false) === $this->get_axis($response, false))
-//            $result->chart_matches++;
-        $this->compare_plot_area($source, $response, $result);
-        $result->chart_total += 0;
-    }
-
-    function get_title(\PhpOffice\PhpSpreadsheet\Chart\Title $title) {
-        if ($title !== null) {
-            $caption = implode(' ', $title->getCaption());
-        } else {
-            $caption = 'Untitled';
+    /**
+     * @param $settings array as returned by {@link get_charts_compare()}
+     */
+    function compare_charts($settings, $source_chart, $response_chart, &$result) {
+        foreach ($settings['criterions'] as $criterion) {
+            if ($response_chart) {
+                $res = call_user_func(array($this, $criterion), $source_chart, $response_chart);
+                $result->{$settings['matches']}++;
+            }
+            $result->chart_total++;
         }
-        return $caption;
+        $this->compare_plot_area($source_chart, $response_chart, $result);
     }
 
-    function get_axis(Chart $chart, bool $axisX) {
-        $axis = $axisX ? $chart->getChartAxisX() : $chart->getChartAxisY();
-        return $axis->getAxisNumberFormat() . $axis->getFillProperty('type') .
-            $axis->getLineProperty('type');
+    function get_dataseries(Chart $chart) {
+        $plot_area = $chart->getPlotArea();
+        return $plot_area && $plot_area->getPlotGroupCount() === 1 ?
+            $plot_area->getPlotGroupByIndex(0) : null;
+    }
+
+    function compare_chart_type(Chart $source_chart, Chart $response_chart) {
+        $source_chart->getPlotArea()->getPlotGroup()[0]->getPlotType();
+    }
+
+    private function get_plot_type(Chart $chart) {
+        $chart->getPlotArea()->getPlotGroup()[0]->getPlotType();
     }
 
     /** Compares plot area's data {@link \PhpOffice\PhpSpreadsheet\Chart\DataSeries} */
@@ -331,6 +385,14 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_compare_b
         if (!$dataSeries || !$dataSeries->getPlotValuesByIndex($index))
             return false;
         return $dataSeries->getPlotValuesByIndex($index)->getDataValues();
+    }
+
+    function compare_legend() {
+
+    }
+
+    function compare_axis_x() {
+
     }
 }
 

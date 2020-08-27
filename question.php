@@ -100,12 +100,11 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
         }
     }
 
-    /** The data used in {@link qtype_digitalliteracy_compare_base::compare_files()} as a parameter */
+    /** The data passed to {@link qtype_digitalliteracy_compare_base::compare_files()} as a parameter */
     public static function response_data() {
-        return array('contextid', 'id', 'firstcoef', 'secondcoef','thirdcoef',
-                     'responseformat', 'hastemplatefile', 'excludetemplate',
-                     'paramvalue', 'paramtype', 'parambold',
-                     'paramfillcolor', 'paramcharts', 'paramimages');
+        $settings = new qtype_digitalliteracy_test_settings();
+        return array_merge(array('contextid', 'id','responseformat', 'hastemplatefile',
+            'excludetemplate'), $settings->get_coefs(), $settings->get_params());
     }
 
     /** Grade a response to the question, returning a fraction between get_min_fraction()
