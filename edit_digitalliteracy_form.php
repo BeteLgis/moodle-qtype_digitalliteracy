@@ -310,7 +310,7 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         $result = $question->grade_response($response);
         list($fraction, $state) = $result;
         if ($fraction != 1.0) {
-            $errors[$error_types['']] = count($result) > 2 ? $result[2]['_error']:
+            $errors[$error_types['']] = count($result) > 2 ? $result[2]['_error'] :
                 get_string('validationerror', 'qtype_digitalliteracy');
         }
     }

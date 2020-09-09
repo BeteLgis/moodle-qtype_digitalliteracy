@@ -84,6 +84,9 @@ class qtype_digitalliteracy_comparator {
      * @param array $files file $name => file $path [in request directory] pairs
      */
     public static function generate_question_file_saver(array $files) {
+        if (empty($files))
+            return '';
+
         global $USER;
         $draftitemid = 0;
         file_prepare_draft_area($draftitemid, null, null, null, null);

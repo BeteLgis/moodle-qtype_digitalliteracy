@@ -127,13 +127,14 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
         }
         $comparator = new qtype_digitalliteracy_comparator();
         $result = $comparator->grade_response($response, $data);
-        if (!empty($result['error']))
+        if (isset($result['error']))
             return array(0, question_state::$invalid, array('_error' => $result['error']));
         $fraction = $result['fraction'];
         if ($this->binarygrading) {
             $fraction = $fraction < 1 ? 0 : 1;
         }
-        return $data->validation ? array($fraction, question_state::graded_state_for_fraction($fraction)) :
+        return $data->validation || empty($result['file_saver']) ?
+            array($fraction, question_state::graded_state_for_fraction($fraction)) :
             array($fraction, question_state::graded_state_for_fraction($fraction),
             array('_mistakes' => $result['file_saver']));
     }

@@ -82,3 +82,67 @@ class qtype_digitalliteracy_tester_base {
         return '';
     }
 }
+
+class Describer {
+
+    public function compare_sheets($data, &$result, $source, &$response) {}
+
+    function get_settings($data) {
+        return array();
+    }
+
+    function wrapper($object, $function) {
+        return array();
+    }
+
+    /**
+     * We describe object (cell or chart) - put all needed data into array, that is gonna help
+     * save comparison time and unify comparison itself!
+     */
+    function describe_by_group($criterions, $object) {
+        $description = array();
+        foreach ($criterions as $key => $function) {
+            $description[$key] = $this->wrapper($object, $function);
+        }
+        return $description;
+    }
+
+    function compare_counter($object1_description, $object2_description, &$log = null) {
+        $matches = 0;
+        $total = 0;
+        foreach ($object1_description as $name => $value) { // always set (look at description method)
+            $matches_local = 0;
+            $total_local = 0;
+            $this->recursive_diff_count($value, $object2_description[$name], // always set
+                $matches_local, $total_local);
+            if (isset($log) && ($total_local === 0 || $matches_local / $total_local !== 1)) {
+                $log[] = 'Mistake in '. $name.' : scored '. $matches_local. ' out of '. $total_local;
+            }
+            $matches += $matches_local;
+            $total += $total_local;
+
+        }
+        return $total === 0 ? 0 : $matches / $total;
+    }
+
+    function recursive_diff_count($array1, $array2, &$matches, &$total) {
+        $flag = is_array($array1) && is_array($array2) && count($array2) > count($array1);
+
+        if (is_array($array1) && count($array1) > 0 && !$flag) {
+            foreach ($array1 as $key => $value) {
+                $this->recursive_diff_count($value, isset($array2[$key]) ? $array2[$key] : array(),
+                    $matches, $total);
+            }
+        } elseif ($flag || is_array($array2) && count($array2) > 0) {
+            foreach ($array2 as $key => $value) {
+                $this->recursive_diff_count(isset($array1[$key]) ? $array1[$key] : array(), $value,
+                    $matches, $total);
+            }
+        } else {
+            if ($array1 === $array2)
+                $matches++;
+            $total++;
+        }
+    }
+
+}

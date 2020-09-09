@@ -88,6 +88,7 @@ $string['templatefiles'] = 'Template file';
 $string['answerfiles'] = 'Answer file';
 $string['noattachments'] = 'No attachments';
 $string['mistakefiles'] = 'Mistakes file';
+$string['nomistakes'] = 'No mistakes';
 
 // known internal errors for phpspreadsheet
 $string['error_coordinate_344'] = 'Using all row (column) selection in formulas is prohibited!';
