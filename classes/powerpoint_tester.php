@@ -8,12 +8,12 @@ use PhpOffice\PhpPresentation\Style\Alignment;
 
 class qtype_digitalliteracy_powerpoint_tester extends qtype_digitalliteracy_tester_base
 {
-    public function validate_file($filepath, $filename) {
+    public function validate_file() {
         //TODO
         return '';
     }
 
-    public function compare_files($data)
+    public function compare_files()
     {
         return array('file_saver' => qtype_digitalliteracy_comparator::
         generate_question_file_saver([]), 'fraction' => 1);

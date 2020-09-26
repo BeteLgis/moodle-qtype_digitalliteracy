@@ -59,11 +59,11 @@ $string['checkbutton'] = 'Show check button';
 $string['commonsettings'] = 'Common settings';
 $string['commonsettings_help'] = 'Binary grading - mark is 0 or 1';
 // validation
-$string['validatecoef'] = 'Enter a float in range [0, 100], please!';
+$string['validatecoef'] = 'Enter a float in range [0, 100]';
 $string['notahundred'] = 'Sum is not a hundred';
 $string['tickacheckbox'] = 'Tick one setting at least';
-$string['validationerror'] = 'Wrong comparison parameters (it\'s impossible to get max mark)';
-$string['emptyfiletypelist'] = 'Filetype list should not be empty';
+$string['validationerror'] = 'Wrong comparison parameters (it\'s impossible to get max mark). Perhaps, source and template files are same and "Exclude template" is checked';
+$string['emptyfiletypelist'] = 'File types list should not be empty';
 $string['incorrectfiletypes'] = 'Incorrect file extensions: {$a}';
 // file errors
 $string['error_noreader'] = 'Can\'t read or accept file {$a->file}. Message: {$a->msg}';
@@ -78,10 +78,11 @@ $string['powerpoint'] = 'Power point';
 
 // question.php
 $string['answered'] = 'You uploaded: {$a}';
-$string['notanswered'] = 'You haven\'t uploaded any file.';
+$string['notanswered'] = 'You haven\'t uploaded any files.';
 $string['mustrequirefewer'] = 'You cannot require more attachments than you allow.';
 $string['insufficientattachments'] = 'Not proper amount of attachments, {$a} required.';
-$string['unknownerror'] = 'An unexpected error occurred. Read feedback below.';
+$string['unknownerror'] = 'An error occurred during answer check. More details below.';
+$string['fatalerror'] = 'An unexpected error occurred: file {@a->file}, line {@a->line}, message {@a->msg}.';
 
 // renderer.php
 $string['templatefiles'] = 'Template file';

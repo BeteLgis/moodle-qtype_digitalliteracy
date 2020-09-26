@@ -2,7 +2,6 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once($CFG->dirroot . '/question/type/digitalliteracy/vendor/autoload.php');
 /** File comparison wrapper (prepares data for comparison) */
 class qtype_digitalliteracy_comparator {
     /** Create request directory, copy files (source, response and, optionally, template),
@@ -11,16 +10,39 @@ class qtype_digitalliteracy_comparator {
      */
     public function grade_response(array $response, &$data) {
         try {
-            $request_directory = make_request_directory();
-            $data->validation ? $this->copy_files_validation($data, $response, $request_directory) :
-                $this->copy_files($data, $response, $request_directory);
-            $data->request_directory = $request_directory;
-            $comparator = self::switch($data->responseformat);
-            $result = $comparator->compare_files($data);
-        } catch (Throwable $th) {
-            return array('error' => $th->getMessage());
+            $dir = make_request_directory(true);
+            $data->validation ? $this->copy_files_validation($data, $response, $dir) :
+                $this->copy_files($data, $response, $dir);
+            $data->request_directory = $dir;
+            $result = $this->run_in_shell($data, true);
         } catch (Exception $ex) {
             return array('error' => $ex->getMessage());
+        }
+        return $result;
+    }
+
+    private function run_in_shell($data, $grade_response) {
+        if ($grade_response)
+            $data->grade_response = true; // grade_response flag (validate otherwise)
+
+        global $CFG;
+        $data->dirroot = $CFG->dirroot;
+        $path = $CFG->dirroot . '/question/type/digitalliteracy/classes/tester_base.php';
+        if (!file_exists($path)) // shouldn't happen!
+            throw new coding_exception('File tester_base.php not found!');
+
+        $output = shell_exec("php $path ". base64_encode(serialize($data)));
+        if (is_null($output) || $res = @unserialize($output)) {
+            if (!empty($res['error']))
+                return $res;
+            throw new coding_exception('Unknown error has occurred in the shell.');
+        }
+
+        require_once($CFG->dirroot . '/question/type/digitalliteracy/classes/tester_base.php');
+        $result = (new Shell($data->request_directory))->read_result();
+        if (!empty($result['files'])) {
+            $result['file_saver'] = qtype_digitalliteracy_comparator::generate_question_file_saver($result['files']);
+            unset($result['files']);
         }
         return $result;
     }
@@ -113,70 +135,54 @@ class qtype_digitalliteracy_comparator {
         return new question_file_saver($draftitemid, 'question', 'response_mistakes');
     }
 
-    /** Switches comparator type */
-    public static function switch($responseformat) {
-        switch ($responseformat)
-        {
-            case 'excel':
-                $comparator = new qtype_digitalliteracy_excel_tester();
-                break;
-            case 'powerpoint':
-                $comparator = new qtype_digitalliteracy_powerpoint_tester();
-                break;
-        }
-        if (!isset($comparator))
-            throw new dml_read_exception('Unexpected error');
-        return $comparator;
-    }
-
     /**
      * Validates file
      * @param $filetypesutil \core_form\filetypes_util
-     * @param $comparator qtype_digitalliteracy_tester_base
      * @param $file stored_file
      */
-    public function validate_file($file, $filetypesutil, $comparator, $whitelist, $dir) {
+    public function validate_file($file, $data, $filetypesutil, $whitelist) {
         $filename = $file->get_filename();
         if (!$filetypesutil->is_allowed_file_type($filename, $whitelist))
             return get_string('error_incorrectextension', 'qtype_digitalliteracy', $filename);
 
-        $fullpath = $dir.'\\'. $filename;
+        $fullpath = $data->request_directory.'/'. $filename;
         if (!$file->copy_content_to($fullpath))
             return get_string('error_filecopy', 'qtype_digitalliteracy', $filename);
 
         if (strlen($filename) < strlen(pathinfo($fullpath, PATHINFO_EXTENSION)) + 4)
             return get_string('error_tooshortfilename', 'qtype_digitalliteracy', $filename);
 
-        return $comparator->validate_file($fullpath, $filename);
+        $data->fullpath = $fullpath;
+        $data->filename = $filename;
+        $result = $this->run_in_shell($data, false);
+        return !empty($result['error']) ? $result['error'] : '';
     }
 
     /** Validate several files, it counts their amount */
     public function validate_files($files, $responseformat, $filetypeslist, $attachmentsrequired) {
         try {
-            $comparator = self::switch($responseformat);
-            $dir = make_request_directory();
-        } catch (Exception $ex) {
-            return $ex->getMessage();
-        }
+            $data = new stdClass();
+            $data->request_directory = make_request_directory(true);
+            $data->responseformat = $responseformat;
 
-        $attachcount = count($files);
+            $attachcount = count($files);
 
-        if ($attachcount != $attachmentsrequired) {
-            return get_string('insufficientattachments',
-                'qtype_digitalliteracy', $attachmentsrequired);
-        }
-
-        if ($attachcount > 0) { // designed to process more than 1 file (just in case)
-            $result = array();
-            $filetypesutil = new \core_form\filetypes_util();
-            $whitelist = $filetypesutil->normalize_file_types($filetypeslist);
-            foreach ($files as $file) {
-                $result[] = $this->validate_file($file, $filetypesutil,
-                    $comparator, $whitelist, $dir);
+            if ($attachcount != $attachmentsrequired) {
+                return get_string('insufficientattachments',
+                    'qtype_digitalliteracy', $attachmentsrequired);
             }
-            if (count($result) > 0) {
+
+            if ($attachcount > 0) { // designed to process more than 1 file (just in case)
+                $result = array();
+                $filetypesutil = new \core_form\filetypes_util();
+                $whitelist = $filetypesutil->normalize_file_types($filetypeslist);
+                foreach ($files as $file) {
+                    $result[] = $this->validate_file($file, $data, $filetypesutil, $whitelist);
+                }
                 return implode(' | ', $result);
             }
+        } catch (Exception $ex) {
+            return $ex->getMessage();
         }
 
         return '';

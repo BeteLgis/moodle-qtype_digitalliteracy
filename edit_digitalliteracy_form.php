@@ -276,7 +276,7 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         }
         $qtype = question_bank::get_qtype('digitalliteracy');
         $accepted = call_user_func(array($qtype, $fromform['responseformat']. '_filetypes'));
-        if (count($types = array_diff(explode(',', $fromform['filetypeslist']), $accepted)) > 0) {
+        if (!empty($types = array_diff(explode(',', $fromform['filetypeslist']), $accepted))) {
             $errors['filetypeslist'] = get_string('incorrectfiletypes', 'qtype_digitalliteracy',
                 implode(', ', $types));
         }
@@ -292,12 +292,12 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         $response = array('attachments' => new question_file_saver($fromform['sourcefiles_filemanager'],
             'qtype_digitalliteracy', 'sourcefiles'), 'validation' => true);
         $flag = false;
-        if (($error = $question->validate_response($response)) !== '') {
+        if (!empty($error = $question->validate_response($response))) {
             $errors[$error_types['sourcefiles']] = $error;
             $flag = true;
         }
-        if ($question->hastemplatefile && ($error = $this->validate_files($fromform,
-                'templatefiles_filemanager')) !== '') {
+        if ($question->hastemplatefile && !empty($error = $this->validate_files($fromform,
+                'templatefiles_filemanager'))) {
             $errors[$error_types['templatefiles']] = $error;
             $flag = true;
         }

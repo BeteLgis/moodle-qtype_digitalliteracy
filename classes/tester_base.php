@@ -1,91 +1,140 @@
 <?php
-/** Base class - instantiates methods to override and
- * provides mechanism for memory consumption tracking
- */
-class qtype_digitalliteracy_tester_base {
-    protected $log = '';
-    protected $usage = -1;
 
-    /** Memorize current memory consumption */
-    protected function start() {
-        $this->usage = memory_get_usage(true);
+global $argc, $argv;
+if ($argc < 2)
+    return; // in case the file is included
+
+if (!($data = @unserialize(base64_decode($argv[1])))) {
+    echo serialize(array('error' => 'Internal error: couldn\'t unserialize data.'));
+    exit(1);
+}
+
+unset($CFG);
+global $CFG;
+$CFG = new stdClass();
+$CFG->dirroot = $data->dirroot;
+
+define('MOODLE_INTERNAL', true);
+require_once($CFG->dirroot . '/question/type/digitalliteracy/vendor/autoload.php');
+require_once($CFG->dirroot . '/question/type/digitalliteracy/classes/excel_tester.php');
+require_once($CFG->dirroot . '/question/type/digitalliteracy/classes/powerpoint_tester.php');
+
+$shell = new Shell($data->request_directory, true);
+try {
+    $shell->modify_result($shell->run($data), false);
+} catch (Throwable $ex) {
+    $shell->modify_result(array('error' => $ex->getMessage()));
+} catch (Exception $ex) { // made for backwards compatibility
+    $shell->modify_result(array('error' => $ex->getMessage()));
+}
+exit('Success');
+
+
+class Shell {
+    private $result = array();
+    private $result_dir = '';
+
+    function __construct($request_directory, $errorHandler = false) {
+        $this->result_dir = $request_directory. '/result.txt';
+        if ($errorHandler)
+            $this->initErrorHandler();
     }
 
-    /** @return int script memory consumtion */
-    protected function get_usage() {
-        if ($this->usage < 0)
-            throw new Exception('Call function \'start\' first!');
-        return memory_get_usage(true) - $this->usage;
+    function initErrorHandler() {
+        $this->memory = new SplFixedArray(65536); // This storage is freed on error (case of allowed memory exhausted)
+        register_shutdown_function(function () {
+            $error = error_get_last();
+            if ($error !== NULL && $error['type'] === E_ERROR) { // filter only fatal errors
+                switch ($error['line']) {
+                    case '344':
+                        $msg = get_string('error_coordinate_344', 'qtype_digitalliteracy');
+                        break;
+                    case '1262':
+                        $msg = get_string('error_worksheet_1262', 'qtype_digitalliteracy');
+                        break;
+                    default:
+                        $res = new stdClass();
+                        $res->file = $error['file'];
+                        $res->line = $error['line'];
+                        $res->msg = $error['message'];
+                        $msg = get_string('fatalerror', 'qtype_digitalliteracy', $res);
+                }
+                $this->modify_result(array('error', $msg));
+            }
+            $this->write_result();
+        });
     }
 
-    /** Converts memory usage into more readable format */
-    protected function get_usage_formatted() {
-        $units = array('b','kb','mb','gb');
-        $memory = $this->get_usage();
-        $result = array();
-        if ($memory === 0) {
-            $result[] = '0 b';
-        } elseif ($memory < 0) {
-            $memory = abs($memory);
-            $result[] = '-';
-        }
-        while ($memory != 0) {
-            $index = floor(log($memory,1024));
-            if ($index < count($units)) {
-                $temp = pow(1024, $index);
-                $unit = floor($memory / $temp);
-                $result[] = $unit. ' '. $units[$index];
-                $memory -= $temp * $unit;
-            } else {
-                $result[] = '0 b';
+    function run($data) {
+        switch ($data->responseformat) {
+            case 'excel':
+                $tester = new qtype_digitalliteracy_excel_tester($data);
                 break;
+            case 'powerpoint':
+                $tester = new qtype_digitalliteracy_powerpoint_tester($data);
+                break;
+        }
+        if (!isset($tester))
+            throw new dml_read_exception('Unexpected error.');
+
+        return isset($data->grade_response) ? $tester->compare_files() : $tester->validate_file();
+    }
+
+    function modify_result($array, $append = true) {
+        if (is_array($array)) {
+            foreach ($array as $key => $value) {
+                if (!(empty($key) || empty($value))) {
+                    $this->result[$key] = $append && !empty($this->result[$key]) ?
+                        $this->result[$key]. ' | '. $value : $value;
+                }
             }
         }
-        return 'Memory used: '. implode(' ', $result). ' ';
     }
 
-    /** Saves usage into log */
-    protected function log_usage() {
-        $this->log .= $this->get_usage_formatted();
+    function write_result() {
+        if (empty($this->result_dir))
+            throw new Exception('Internal error: resulting directory was not set.');
+
+        file_put_contents($this->result_dir, base64_encode(serialize($this->result)));
     }
 
-    /** Determines when a file loaded is too big to be processed */
-    public static function is_memory_exhausted($error) {
-        $memory_limit = self::return_bytes(ini_get('memory_limit'));
-        if (memory_get_usage(true) / $memory_limit > 0.8)
-            throw new Exception(get_string('error_'. $error, 'qtype_digitalliteracy'));
-    }
+    /** Used by {@link qtype_digitalliteracy_comparator} */
+    function read_result() {
+        if (empty($this->result_dir))
+            throw new Exception('Internal error: resulting directory was not set.');
+        if (!file_exists($this->result_dir))
+            throw new Exception('Internal error: no resulting file from shell was created.');
 
-    /** Convert M, K or G key into bytes size */
-    public static function return_bytes($size_str) {
-        switch (substr($size_str, -1))
-        {
-            case 'M': case 'm': return (int)$size_str * 1048576;
-            case 'K': case 'k': return (int)$size_str * 1024;
-            case 'G': case 'g': return (int)$size_str * 1073741824;
-            default: return $size_str;
-        }
+        return unserialize(base64_decode(file_get_contents($this->result_dir)));
+    }
+}
+
+/** Performs comparison in shell
+ */
+class qtype_digitalliteracy_tester_base {
+    protected $data;
+
+    function __construct($data) {
+        $this->data = $data;
     }
 
     /** Main comparison method
      * @param $data {@link qtype_digitalliteracy_question::response_data()}
-     * @return array {@link question_file_saver} and fraction
+     * @return array {@link question_file_saver} and fraction (or possibly error)
      */
-    public function compare_files($data) {
+    public function compare_files() {
         return array();
     }
 
     /** Validates a file inside a determined comparator
-     * @return string containing error, empty string otherwise
+     * @return array with a string containing error, empty string otherwise
      */
-    public function validate_file($filepath, $filename) {
-        return '';
+    public function validate_file() {
+        return array();
     }
 }
 
 class Describer {
-
-    public function compare_sheets($data, &$result, $source, &$response) {}
 
     function get_settings($data) {
         return array();
@@ -144,5 +193,4 @@ class Describer {
             $total++;
         }
     }
-
 }

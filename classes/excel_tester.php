@@ -11,58 +11,51 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Calculation\Calculation;
 use PhpOffice\PhpSpreadsheet\Chart\Chart;
 
-require_once($CFG->dirroot.'/question/type/digitalliteracy/question.php');
-
-function shutDownFunction() {
-    $error = error_get_last();
-    if ($error['type'] === E_ERROR) {
-        echo 'Unexpected error, please report to the developer on e-mail \'aasharipov@edu.hse.ru\'!';
-    }
-}
-register_shutdown_function('shutDownFunction');
-
 /** Excel file (spreadsheet) comparator */
 class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_tester_base {
 
-    public function validate_file($filepath, $filename) {
-        try {
-            $this->start();
-            $reader = IOFactory::createReaderForFile($filepath);
+    public function validate_file() {
+        $func = function () {
+            $reader = IOFactory::createReaderForFile($this->data->fullpath);
             $reader->setReadEmptyCells(false);
-            $reader->setReadDataOnly(true);
-            $reader->setIncludeCharts(false);
-            $spreadsheet = $reader->load($filepath);
+            $reader->setIncludeCharts(true);
+            $spreadsheet = $reader->load($this->data->fullpath);
             Calculation::getInstance($spreadsheet)->disableCalculationCache();
             if (($count = $spreadsheet->getSheetCount()) !== 1)
-                throw new Exception('Spreadsheet has '. $count. ' sheets ('.
-                    implode(', ', $spreadsheet->getSheetNames()). '). Only 1 is supported (for now)!');
+                return 'Spreadsheet has '. $count. ' sheets ('.
+                    implode(', ', $spreadsheet->getSheetNames()). '). Only 1 is supported (for now)!';
             $sheet = $spreadsheet->getSheet(0);
             $cell_collection = array_flip($sheet->getCellCollection()->getCoordinates());
             if (count($cell_collection) === 0)
-                throw new Exception('Sheet with title '. $sheet->getTitle(). ' has 0 non-empty cells');
+                return 'Sheet with title '. $sheet->getTitle(). ' has 0 non-empty cells';
             foreach ($cell_collection as $coordinate => $index) {
                 $cell = $sheet->getCell($coordinate, false);
                 $cell->getCalculatedValue(); // looking for infinite loops (like 'F:F' range)
             }
-        } catch (Exception $ex) {
+            return '';
+        };
+        $error = $func();
+        if (!empty($error)) {
             $res = new stdClass();
-            $res->file = $filename;
-            $res->msg = $ex->getMessage();
-            return get_string('error_noreader', 'qtype_digitalliteracy', $res);
+            $res->file = $this->data->filename;
+            $res->msg = $error;
+            throw new Exception(get_string('error_noreader', 'qtype_digitalliteracy', $res));
         }
-        return '';
+        return array();
     }
 
-    public function compare_files($data) {
+    public function compare_files() {
         // preparing files and creating a reader
-        $filetype = IOFactory::identify($data->response_path);
+        $filetype = IOFactory::identify($this->data->response_path);
         $reader = IOFactory::createReader($filetype);
         $reader->setReadEmptyCells(false);
-        $data->groupthreecoef > 0 ? $reader->setIncludeCharts(true) : $reader->setIncludeCharts(false);
+        $this->data->groupthreecoef > 0 ? $reader->setIncludeCharts(true) :
+            $reader->setIncludeCharts(false);
 
-        $spreadsheet_response = $reader->load($data->response_path);
-        $spreadsheet_source = $reader->load($data->source_path);
-        $spreadsheet_template = isset($data->template_path) ? $reader->load($data->template_path) : null;
+        $spreadsheet_response = $reader->load($this->data->response_path);
+        $spreadsheet_source = $reader->load($this->data->source_path);
+        $spreadsheet_template = isset($this->data->template_path) ?
+            $reader->load($this->data->template_path) : null;
 
         Calculation::getInstance($spreadsheet_response)->disableCalculationCache(); // not needed as we compare in one run
         Calculation::getInstance($spreadsheet_source)->disableCalculationCache();
@@ -75,14 +68,13 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_tester_ba
         $sheet_template = $spreadsheet_template ? $spreadsheet_template->getSheet(0) : null;
 
         $writer = IOFactory::createWriter($spreadsheet_response, $filetype);
-        list($fraction, $files) = $this->compare_with_coefficients($data, $sheet_source,
+        list($fraction, $files) = $this->compare_with_coefficients($sheet_source,
             $sheet_response, $sheet_template, $writer);
 
-        if ($data->validation)
+        if ($this->data->validation)
             return array('fraction' => $fraction);
 
-        return array('file_saver' => qtype_digitalliteracy_comparator::
-        generate_question_file_saver($files), 'fraction' => $fraction);
+        return array('files' => $files, 'fraction' => $fraction);
     }
 
     /** Compare considering coefficients and
@@ -92,19 +84,18 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_tester_ba
      * @param $sheet_template Worksheet\Worksheet
      * @param $writer PhpOffice\PhpSpreadsheet\Writer\IWriter
      */
-    private function compare_with_coefficients($data, $sheet_source,
-                                               &$sheet_response, $sheet_template, $writer) {
+    private function compare_with_coefficients($sheet_source, &$sheet_response, $sheet_template, $writer) {
         $result = array(); // contains a mark for each comparison group
         $files = array(); // file name => path for each mistake file
 
         $cell_describer = new CellDescriber();
-        $cell_describer->compare_sheets($data, $result, $sheet_source, $sheet_response, $sheet_template);
+        $cell_describer->compare_sheets($this->data, $result, $sheet_source, $sheet_response, $sheet_template);
 
         $chart_describer = new ChartDescriber();
-        if (!empty($mistakes = $chart_describer->compare_sheets($data, $result,
-                $sheet_source, $sheet_response, $writer)) && !$data->validation) {
+        if (!empty($mistakes = $chart_describer->compare_sheets($this->data, $result,
+                $sheet_source, $sheet_response, $writer)) && !$this->data->validation) {
             $name = 'Mistakes_charts.txt';
-            $path = $data->request_directory . '/' . $name;
+            $path = $this->data->request_directory . '/' . $name;
 
             foreach ($mistakes as $chartname => $errors) {
                 $str = str_repeat('-', 10);
@@ -115,10 +106,10 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_tester_ba
         }
 
         $res = array_sum($result);
-        if ($res != 1 && !$data->validation) {
-            $mistakes_name = 'Mistakes_' . $data->mistakes_name;
-            $mistakes_path = $data->request_directory . '/' . $mistakes_name;
-            $writer->setUseDiskCaching(true, $data->request_directory);
+        if ($res != 1 && !$this->data->validation) {
+            $mistakes_name = 'Mistakes_' . $this->data->mistakes_name;
+            $mistakes_path = $this->data->request_directory . '/' . $mistakes_name;
+            $writer->setUseDiskCaching(true, $this->data->request_directory);
             $writer->setPreCalculateFormulas(false);
             $writer->save($mistakes_path);
             $files[$mistakes_name] = $mistakes_path;
