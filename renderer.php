@@ -60,10 +60,11 @@ class qtype_digitalliteracy_renderer extends qtype_renderer {
         $mistakefiles = $this->get_files_from_filearea($qa, $options->context->id,
             'question','response_mistakes', $qa->get_last_step()->get_id());
 
-        if (!empty($options->readonly) && $mistakefiles != '' && ($question->showmistakes || !$student_or_no_role)) {
+        if (!empty($options->readonly) && ($question->showmistakes || !$student_or_no_role)) {
             $result .= html_writer::tag('h4', html_writer::tag('b',
                 get_string('mistakefiles', 'qtype_digitalliteracy')));
-            $result .= html_writer::tag('div', $mistakefiles, array('class' => 'mistakefiles'));
+            $result .= html_writer::tag('div', $mistakefiles !== '' ? $mistakefiles :
+                get_string('nomistakes', 'qtype_digitalliteracy'), array('class' => 'mistakefiles'));
         }
 
         $result .= html_writer::end_tag('div');

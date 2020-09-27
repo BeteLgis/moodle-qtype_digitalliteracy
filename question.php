@@ -96,16 +96,16 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
         if ($error) {
             return $error;
         } else {
+            // error is stored in qt_data and will be displayed in the specific feedback
             return get_string('unknownerror', 'qtype_digitalliteracy');
         }
     }
 
-    /** The data used in {@link qtype_digitalliteracy_compare_base::compare_files()} as a parameter */
+    /** The data passed to {@link qtype_digitalliteracy_compare_base::compare_files()} as a parameter */
     public static function response_data() {
-        return array('contextid', 'id', 'firstcoef', 'secondcoef','thirdcoef',
-                     'responseformat', 'hastemplatefile', 'excludetemplate',
-                     'paramvalue', 'paramtype', 'parambold',
-                     'paramfillcolor', 'paramcharts', 'paramimages');
+        $settings = new qtype_digitalliteracy_test_settings();
+        return array_merge(array('contextid', 'id','responseformat', 'hastemplatefile',
+            'excludetemplate'), $settings->get_coefs(), $settings->get_params());
     }
 
     /** Grade a response to the question, returning a fraction between get_min_fraction()
@@ -128,13 +128,14 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
         }
         $comparator = new qtype_digitalliteracy_comparator();
         $result = $comparator->grade_response($response, $data);
-        if (!empty($result['error']))
+        if (isset($result['error']))
             return array(0, question_state::$invalid, array('_error' => $result['error']));
         $fraction = $result['fraction'];
         if ($this->binarygrading) {
             $fraction = $fraction < 1 ? 0 : 1;
         }
-        return $data->validation ? array($fraction, question_state::graded_state_for_fraction($fraction)) :
+        return $data->validation || empty($result['file_saver']) ?
+            array($fraction, question_state::graded_state_for_fraction($fraction)) :
             array($fraction, question_state::graded_state_for_fraction($fraction),
             array('_mistakes' => $result['file_saver']));
     }
