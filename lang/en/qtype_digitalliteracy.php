@@ -65,12 +65,13 @@ $string['tickacheckbox'] = 'Tick one setting at least';
 $string['validationerror'] = 'Wrong comparison parameters (it\'s impossible to get max mark). Perhaps, source and template files are same and "Exclude template" is checked';
 $string['emptyfiletypelist'] = 'File types list should not be empty';
 $string['incorrectfiletypes'] = 'Incorrect file extensions: {$a}';
-// file errors
-$string['error_noreader'] = 'Can\'t read or accept file {$a->file}. Message: {$a->msg}';
-$string['error_incorrectextension'] = 'File with wrong extension: {$a}';
-$string['error_filecopy'] = 'Internal error: failed to copy a file {$a} into temporary directory needed for analysis';
-$string['error_tooshortfilename'] = 'File \'{$a}\' has a too short name (3 characters excluding extension and a dot are needed)';
-$string['error_filenotexist'] = 'Internal error: file \'{$a->name}\' by path \'{$a->path}\' doesn\'t exist';
+
+// comparator.php file errors
+$string['error_incorrectextension'] = 'File with wrong extension: {$a}.';
+$string['error_filecopy'] = 'Internal error: failed to copy a file {$a} into temporary directory needed for analysis.';
+$string['error_tooshortfilename'] = 'File \'{$a}\' has a too short name (3 characters excluding extension and a dot are needed).';
+$string['error_filenotexist'] = 'Internal error: file \'{$a->name}\' by path \'{$a->path}\' doesn\'t exist.';
+$string['insufficientattachments'] = 'Not proper amount of attachments, {$a} required.';
 
 // questiontype.php
 $string['excel'] = 'Excel';
@@ -79,10 +80,7 @@ $string['powerpoint'] = 'Power point';
 // question.php
 $string['answered'] = 'You uploaded: {$a}';
 $string['notanswered'] = 'You haven\'t uploaded any files.';
-$string['mustrequirefewer'] = 'You cannot require more attachments than you allow.';
-$string['insufficientattachments'] = 'Not proper amount of attachments, {$a} required.';
 $string['unknownerror'] = 'An error occurred during answer check. More details below.';
-$string['fatalerror'] = 'An unexpected error occurred: file {@a->file}, line {@a->line}, message {@a->msg}.';
 
 // renderer.php
 $string['templatefiles'] = 'Template file';
@@ -91,9 +89,15 @@ $string['noattachments'] = 'No attachments';
 $string['mistakefiles'] = 'Mistakes file';
 $string['nomistakes'] = 'No mistakes';
 
-// known internal errors for phpspreadsheet
-$string['error_coordinate_344'] = 'Using all row (column) selection in formulas is prohibited!';
-$string['error_worksheet_1262'] = 'Trying to process a too big file!';
+// tester_base.php
+$string['fatalerror'] = 'An unexpected error occurred: file {@a->file}, line {@a->line}, message {@a->msg}.';
+$string['error_noreader'] = 'Can\'t read or accept file {$a->file}. Message: {$a->msg}.';
+
+// excel_tester.php
+$string['error_sheetlimit'] = 'Spreadsheet has no sheets or more than one sheet!';
+$string['error_zerocells'] = 'Sheet with title {$a->title} has 0 non-empty cells!';
+$string['error_coordinate_394'] = 'Using all row (column) selection in formulas is prohibited!';
+$string['error_stringhelper_481'] = 'Trying to process a too big file!';
 
 $string['pluginname'] = 'Digital Literacy';
 $string['pluginname_help'] = 'Autogradable Digital Literacy (Excel, Powerpoint) question.';

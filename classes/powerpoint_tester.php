@@ -8,6 +8,10 @@ use PhpOffice\PhpPresentation\Style\Alignment;
 
 class qtype_digitalliteracy_powerpoint_tester extends qtype_digitalliteracy_tester_base
 {
+    public static function get_strings() {
+        return array();
+    }
+
     public function validate_file() {
         //TODO
         return '';

@@ -1,4 +1,9 @@
 <?php
+ini_set('memory_limit', convert(memory_get_usage(true) + 20 * pow(2, 20)));
+function convert($usage) {
+    $unit = array('B','K','M','G');
+    return @round($usage/pow(1024,($i=floor(log($usage,1024)))),2).$unit[$i];
+}
 
 global $argc, $argv;
 if ($argc < 2)
@@ -8,6 +13,8 @@ if (!($data = @unserialize(base64_decode($argv[1])))) {
     echo serialize(array('error' => 'Internal error: couldn\'t unserialize data.'));
     exit(1);
 }
+
+$shell = new Shell($data->request_directory, $data->errors, true);
 
 unset($CFG);
 global $CFG;
@@ -19,7 +26,6 @@ require_once($CFG->dirroot . '/question/type/digitalliteracy/vendor/autoload.php
 require_once($CFG->dirroot . '/question/type/digitalliteracy/classes/excel_tester.php');
 require_once($CFG->dirroot . '/question/type/digitalliteracy/classes/powerpoint_tester.php');
 
-$shell = new Shell($data->request_directory, true);
 try {
     $shell->modify_result($shell->run($data), false);
 } catch (Throwable $ex) {
@@ -33,11 +39,13 @@ exit('Success');
 class Shell {
     private $result = array();
     private $result_dir = '';
+    private $errors = array();
 
-    function __construct($request_directory, $errorHandler = false) {
+    function __construct($request_directory, $errors = array(), $errorHandler = false) {
         $this->result_dir = $request_directory. '/result.txt';
         if ($errorHandler)
             $this->initErrorHandler();
+        $this->errors = $errors;
     }
 
     function initErrorHandler() {
@@ -45,21 +53,15 @@ class Shell {
         register_shutdown_function(function () {
             $error = error_get_last();
             if ($error !== NULL && $error['type'] === E_ERROR) { // filter only fatal errors
-                switch ($error['line']) {
-                    case '344':
-                        $msg = get_string('error_coordinate_344', 'qtype_digitalliteracy');
-                        break;
-                    case '1262':
-                        $msg = get_string('error_worksheet_1262', 'qtype_digitalliteracy');
-                        break;
-                    default:
-                        $res = new stdClass();
-                        $res->file = $error['file'];
-                        $res->line = $error['line'];
-                        $res->msg = $error['message'];
-                        $msg = get_string('fatalerror', 'qtype_digitalliteracy', $res);
+                $filename = pathinfo($error['file'], PATHINFO_FILENAME);
+                $key = 'error_'. strtolower($filename). '_'. $error['line'];
+                if (!empty($this->errors[$key])) {
+                    $msg = $this->errors[$key];
+                } else {
+                    $msg = sprintf($this->errors['fatalerror'], $filename. '.php',
+                        $error['line'], substr($error['message'], 0, 48));
                 }
-                $this->modify_result(array('error', $msg));
+                $this->modify_result(array('error' => $msg));
             }
             $this->write_result();
         });
@@ -116,6 +118,11 @@ class qtype_digitalliteracy_tester_base {
 
     function __construct($data) {
         $this->data = $data;
+    }
+
+    public static function get_strings() {
+        return array('fatalerror' => get_string('fatalerror', 'qtype_digitalliteracy'),
+            'error_noreader' => get_string('error_noreader', 'qtype_digitalliteracy'));
     }
 
     /** Main comparison method

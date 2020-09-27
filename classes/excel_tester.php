@@ -14,6 +14,13 @@ use PhpOffice\PhpSpreadsheet\Chart\Chart;
 /** Excel file (spreadsheet) comparator */
 class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_tester_base {
 
+    public static function get_strings() {
+        return array('error_coordinate_394' => get_string('error_coordinate_394', 'qtype_digitalliteracy'),
+            'error_stringhelper_481' => get_string('error_stringhelper_481', 'qtype_digitalliteracy'),
+            'error_sheetlimit' => get_string('error_sheetlimit', 'qtype_digitalliteracy'),
+            'error_zerocells' => get_string('error_zerocells', 'qtype_digitalliteracy'));
+    }
+
     public function validate_file() {
         $func = function () {
             $reader = IOFactory::createReaderForFile($this->data->fullpath);
@@ -21,13 +28,18 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_tester_ba
             $reader->setIncludeCharts(true);
             $spreadsheet = $reader->load($this->data->fullpath);
             Calculation::getInstance($spreadsheet)->disableCalculationCache();
-            if (($count = $spreadsheet->getSheetCount()) !== 1)
-                return 'Spreadsheet has '. $count. ' sheets ('.
-                    implode(', ', $spreadsheet->getSheetNames()). '). Only 1 is supported (for now)!';
+            if (($count = $spreadsheet->getSheetCount()) !== 1) {
+                return $this->data->fork ? get_string('error_sheetlimit', 'qtype_digitalliteracy') :
+                    $this->data->errors['error_sheetlimit'];
+            }
             $sheet = $spreadsheet->getSheet(0);
             $cell_collection = array_flip($sheet->getCellCollection()->getCoordinates());
-            if (count($cell_collection) === 0)
-                return 'Sheet with title '. $sheet->getTitle(). ' has 0 non-empty cells';
+            if (count($cell_collection) === 0) {
+                $res = new stdClass();
+                $res->title = $sheet->getTitle();
+                return $this->data->fork ? get_string('error_zerocells', 'qtype_digitalliteracy') :
+                    sprintf($this->data->errors['error_zerocells'], $res->title);
+            }
             foreach ($cell_collection as $coordinate => $index) {
                 $cell = $sheet->getCell($coordinate, false);
                 $cell->getCalculatedValue(); // looking for infinite loops (like 'F:F' range)
@@ -39,7 +51,9 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_tester_ba
             $res = new stdClass();
             $res->file = $this->data->filename;
             $res->msg = $error;
-            throw new Exception(get_string('error_noreader', 'qtype_digitalliteracy', $res));
+            $message = $this->data->fork ? get_string('error_noreader', 'qtype_digitalliteracy', $res)
+                : sprintf($this->data->errors['error_noreader'], $res->file, $res->msg);
+            throw new Exception($message);
         }
         return array();
     }

@@ -96,6 +96,7 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
         if ($error) {
             return $error;
         } else {
+            // error is stored in qt_data and will be displayed in the specific feedback
             return get_string('unknownerror', 'qtype_digitalliteracy');
         }
     }
