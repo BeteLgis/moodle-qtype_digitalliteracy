@@ -7,7 +7,7 @@ class qtype_digitalliteracy_comparator {
     public static $fork = false; // use fork [only UNIX] or shell [UNIX and Windows]
 
     public function __construct() {
-        self::$fork = function_exists('pcntl_fork');
+        self::$fork = false; // function_exists('pcntl_fork');
     }
 
     /** Create request directory, copy files (source, response and, optionally, template),
