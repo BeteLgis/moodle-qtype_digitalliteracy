@@ -10,11 +10,13 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
     /** Add any question-type specific form fields.
      * @Overrides question_edit_form::definition_inner
      * @param $mform MoodleQuickForm the form being built.
+     * groups are declared in {@link qtype_digitalliteracy_test_settings}
      */
     protected function definition_inner($mform) {
         $qtype = question_bank::get_qtype('digitalliteracy');
         $options['subdirs'] = false;
         $options['maxfiles'] = 1;
+        $grading_options = new qtype_digitalliteracy_test_settings();
 
         $responseformats = $qtype->response_formats();
         $mform->addElement('select', 'responseformat',
@@ -40,9 +42,20 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         $mform->addElement('filemanager', 'sourcefiles_filemanager', get_string('sourcefiles',
             'qtype_digitalliteracy'), null, $options);
 
-        $mform->addElement('advcheckbox', 'hastemplatefile', get_string('hastemplatefile',
+        $template_setting_group = array();
+        $template_setting_group[] = $mform->createElement('advcheckbox', 'hastemplatefile', get_string('hastemplatefile',
             'qtype_digitalliteracy'));
         $mform->setDefault('hastemplatefile', 0);
+
+        $template_setting_group[] = $mform->createElement('advcheckbox', 'excludetemplate', get_string('excludetemplate',
+        'qtype_digitalliteracy'));
+        $mform->disabledIf('excludetemplate', 'hastemplatefile');
+        $mform->setDefault('excludetemplate', 0);
+
+        $mform->addElement('group', 'template_settings', get_string('template_settings',
+            'qtype_digitalliteracy'), $template_setting_group, null, false);
+        $mform->addHelpButton('template_settings', 'template_settings', 'qtype_digitalliteracy');
+
         $mform->addElement('filemanager', 'templatefiles_filemanager', get_string('responsefiletemplate',
             'qtype_digitalliteracy'), null, $options);
         $mform->hideif('templatefiles_filemanager', 'hastemplatefile');
@@ -51,33 +64,18 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
             'qtype_digitalliteracy'));
         $mform->setExpanded('responsegradingoptions');
 
-        $this->add_group($mform, $this->group_1);
-        $this->add_group($mform, $this->group_2);
-        $this->add_group($mform, $this->group_3);
-        $this->add_group($mform, $this->common_settings_group, true);
+        foreach ($grading_options->get_groups() as $group) {
+            $this->add_group($mform, $group);
+        }
+        $this->add_group($mform, $grading_options->group_common(), true);
 
-        $mform->setDefault('firstcoef', '100');
-        $mform->setDefault('secondcoef', '0');
-        $mform->setDefault('thirdcoef', '0');
-        $mform->setDefault('binarygrading', '0');
-        $mform->disabledIf('excludetemplate', 'hastemplatefile');
+        $mform->setDefault($grading_options->get_coefs()[0], '100');
+        $mform->setDefault('binarygrading', 0);
 
-        $this->responseformat_change_listeners($mform, $responseformats);
-        $this->validation_listeners();
+        $this->responseformat_change_listeners($mform, $responseformats, $grading_options);
+        $this->validation_listeners($grading_options);
     }
 
-    // Grading options group, only two element types supported for now
-    // 'text' [false] and 'advcheckbox' [true]
-    private $group_1 = array('name' => 'coef_value_group', 'items' => ['firstcoef' => false,
-        'paramvalue' => true, 'paramtype' => true]);
-    private $group_2 = array('name' => 'coef_format_group', 'items' => ['secondcoef' => false,
-        'parambold' => true, 'paramfillcolor' => true]);
-    private $group_3 = array('name' => 'coef_enclosures_group', 'items' => ['thirdcoef' => false,
-        'paramcharts' => true, 'paramimages' => true]);
-    // Common settings
-    private $common_settings_group = array('name' => 'commonsettings', 'items' =>
-        ['excludetemplate' => true, 'binarygrading' => true,
-            'showmistakes' => true, 'checkbutton' => true]);
     /**
      * Adds group [listed above] to the form
      * @param $mform MoodleQuickForm
@@ -92,52 +90,30 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         $content = array();
         foreach ($items as $name => $type) {
             if (!$type) { // false == text
-                $significance = $name;
                 $content[] = $mform->createElement('text', $name, get_string('significance',
                     'qtype_digitalliteracy'), array('size' => 1, 'maxlength' => 3));
                 $mform->setType($name, PARAM_RAW);
+                $mform->setDefault($name, '0');
             } else { // true == advcheckbox
                 $identifier = $commom ? $name : $name. '_excel';
                 $content[] = $mform->createElement('advcheckbox', $name, get_string($identifier,
                     'qtype_digitalliteracy'));
-                $mform->setDefault($name, '1');
+                $mform->setDefault($name, 1);
             }
         }
-        $mform->addElement('group', $groupname, get_string($groupname,
+        $identifier = $commom ? $groupname : 'groupplaceholder';
+        $mform->addElement('group', $groupname, get_string($identifier,
             'qtype_digitalliteracy'), $content, null, false);
-        $mform->addHelpButton($groupname, $groupname, 'qtype_digitalliteracy');
-        if (isset($significance))
-            $mform->disabledIf($groupname, $significance, 'eq', 0);
+        $mform->addHelpButton($groupname, $identifier, 'qtype_digitalliteracy');
     }
 
     /**
      * Creates necessary data structure for response format change action [select element]
      * and passes that data to JS (AMD)
+     * @param $grading_options qtype_digitalliteracy_test_settings
      */
-    private function responseformat_change_listeners(&$mform, $responseformats) {
-        $labels = array();
-
-        $params = array('paramvalue', 'paramtype', 'parambold', 'paramfillcolor', 'paramcharts', 'paramimages');
-        $groups = array('coef_value_group', 'coef_format_group', 'coef_enclosures_group');
-        $responseformats = array_keys($responseformats);
-        // saving all labels for various response options into $labels array
-        foreach ($params as $param) {
-            foreach ($responseformats as $responseformat) {
-                $key = $param. '_'. $responseformat;
-                $labels[$key] = get_string($key, 'qtype_digitalliteracy');
-            }
-        }
-        foreach ($groups as $group) {
-            foreach (array('_help_title', '_help_text') as $item) {
-                foreach ($responseformats as $responseformat) {
-                    $key = $group. $item. '_'. $responseformat;
-                    $labels[$key] = get_string('pattern'. $item, 'qtype_digitalliteracy',
-                        get_string($key, 'qtype_digitalliteracy'));
-                    if (strlen($item) === 11)
-                        $labels[$group. '_'. $responseformat] = get_string($key, 'qtype_digitalliteracy');
-                }
-            }
-        }
+    private function responseformat_change_listeners(&$mform, $responseformats, $grading_options) {
+        $labels = $this->createlabels($responseformats, clone $grading_options);
         $labels['filetype_description'] = get_string('filetype_description', 'qtype_digitalliteracy');
 
         // a little trick to avoid error "more than 1024 symbols were passed to an AMD JS script"
@@ -154,35 +130,53 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
                         'mimetypes')]]);
 
         global $PAGE;
-        $coefs = array('id_firstcoef', 'id_secondcoef', 'id_thirdcoef');
+        $params = $grading_options->get_params();
+        $groups = $grading_options->get_groups_names();
+        $data = array('params' => $params, 'groups' => $groups, 'types' => $types);
+        $PAGE->requires->js_call_amd('qtype_digitalliteracy/labelchange', 'process',
+            array($data));
+        $coefs = $grading_options->get_coefs_ids();
         $PAGE->requires->js_call_amd('qtype_digitalliteracy/coefficientchange', 'process',
             array($coefs));
-        $data = array('params' => $params, 'groups' => $groups, 'types' => $types);
-        $PAGE->requires->js_call_amd('qtype_digitalliteracy/formatchange', 'process',
-            array($data));
+    }
+
+    /** @return array of the labels for various response options */
+    private function createlabels($responseformats, $grading_options) {
+        $responseformats = array_keys($responseformats);
+        $labels = array();
+        foreach ($responseformats as $responseformat) {
+            $grading_options->set_groups($responseformat);
+            $params = $grading_options->get_params();
+            $groups = $grading_options->get_groups_names();
+            foreach ($params as $param) {
+                $key = $param. '_'. $responseformat;
+                $labels[$key] = get_string($key, 'qtype_digitalliteracy');
+            }
+            foreach ($groups as $group) {
+                foreach (array('_help_title', '_help_text') as $item) {
+                    $key = $group. $item. '_'. $responseformat;
+                    $labels[$key] = get_string('pattern'. $item, 'qtype_digitalliteracy',
+                        get_string($key, 'qtype_digitalliteracy'));
+                    if (strlen($item) === 11)
+                        $labels[$group. '_'. $responseformat] = get_string($key, 'qtype_digitalliteracy');
+                }
+            }
+        }
+        return $labels;
     }
 
     /** Add validation messages to the HTML document [using AMD JS]
      * and trigger them on corresponding events
+     * @param $grading_options qtype_digitalliteracy_test_settings
      */
-    private function validation_listeners() {
-        $items = array();
-        foreach($this->group_1['items'] as $item => $type) {
-            $items[$item] = ['type' => $type, 'group' => $this->group_1['name']];
-        }
-        foreach($this->group_2['items'] as $item => $type) {
-            $items[$item] = ['type' => $type, 'group' => $this->group_2['name']];
-        }
-        foreach($this->group_3['items'] as $item => $type) {
-            $items[$item] = ['type' => $type, 'group' => $this->group_3['name']];
-        }
-
+    private function validation_listeners($grading_options) {
         $errors = array('validatecoef' => get_string('validatecoef', 'qtype_digitalliteracy'),
-            'notahunred' => get_string('notahunred', 'qtype_digitalliteracy'),
+            'notahundred' => get_string('notahundred', 'qtype_digitalliteracy'),
             'tickacheckbox' => get_string('tickacheckbox', 'qtype_digitalliteracy'));
 
         global $PAGE;
-        $data = array('items' => $items, 'errors' => $errors);
+        $data = array('coefs_map' => $grading_options->get_coefs_map(),
+            'params_map' => $grading_options->get_params_map(), 'errors' => $errors);
         $PAGE->requires->js_call_amd('qtype_digitalliteracy/validation', 'process',
             array($data));
     }
@@ -206,17 +200,24 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
 
     public function validation($fromform, $files) {
         $errors = parent::validation($fromform, $files);
-        // coefs - coef [significance text area] => group association
-        $coefs = array('firstcoef' => 'coef_value_group', 'secondcoef' => 'coef_format_group',
-            'thirdcoef' => 'coef_enclosures_group');
-        // groups - group => param (checkbox) association
-        $groups = array('coef_value_group' => ['paramvalue', 'paramtype'], 'coef_format_group' =>
-        ['parambold', 'paramfillcolor'], 'coef_enclosures_group' => ['paramcharts', 'paramimages']);
+        $grading_options = new qtype_digitalliteracy_test_settings();
+        $grading_options->set_groups($fromform['responseformat']);
+        $error_msg = array();
 
-        $values = $this->validatecoefs($coefs, $fromform, $errors);
-        $this->validateparams($coefs, $groups, $fromform, $values, $errors);
-        if ($fromform['filetypeslist'] === '')
-            $errors['filetypeslist'] = get_string('emptyfiletypelist', 'qtype_digitalliteracy');
+        // coefs_map - coef [significance text area] => group association
+        $coefs_map = $grading_options->get_coefs_map();
+        $values = $this->validatecoefs($coefs_map, $fromform, $error_msg);
+
+        // params_map - group => params (checkboxes) association
+        $params_map = $grading_options->get_params_map();
+        $this->validateparams($params_map, $fromform, $values, $error_msg);
+
+        foreach ($error_msg as $group => $value) {
+            if (!empty($value))
+                $errors[$group] = implode(' | ', $value);
+        }
+
+        $this->validatefiletypelist($fromform,$errors);
 
         if (empty($errors))
             $this->validatedata($fromform, $errors);
@@ -225,7 +226,7 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
     }
 
     /** Validates coefficients (int int range [0,100] and sum of them is 100) */
-    private function validatecoefs($coefs, $fromform, &$errors) {
+    private function validatecoefs($coefs_map, $fromform, &$error_msg) {
         $options = array(
             'options' => array(
                 'default' => -1,
@@ -234,36 +235,50 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
             )
         );
         $values = array();
-        foreach ($coefs as $value => $group) { // validates value
-            if (($res = filter_var($fromform[$value], FILTER_VALIDATE_INT, $options)) < 0) {
-                $errors[$group] = get_string('validatecoef', 'qtype_digitalliteracy');
-            } else
-                $values[$value] = $res;
+        foreach ($coefs_map as $coef => $group) { // validates value
+            $error_msg[$group] = array();
+            $res = filter_var($fromform[$coef], FILTER_VALIDATE_INT, $options);
+            $values[$group] = $res;
+            if ($res < 0) {
+                $error_msg[$group][] = get_string('validatecoef', 'qtype_digitalliteracy');
+            }
         }
-        if (count($values) === 3 && array_sum($values) != 100) { // validates sum
-            foreach ($coefs as $value => $group) {
-                $errors[$group] = get_string('notahunred', 'qtype_digitalliteracy');
+        if (!in_array(-1, $values) && array_sum($values) != 100) { // validates sum
+            foreach ($coefs_map as $group) {
+                $error_msg[$group][] = get_string('notahundred', 'qtype_digitalliteracy');
             }
         }
         return $values;
     }
 
     /** Validates params (Value, Calculated Value, Bold and so on) */
-    private function validateparams($coefs, $groups, $fromform, $values, &$errors) {
-        foreach ($values as $key => $value) {
-            if ($value != 0) { // for each coefficient with non-zero significance validate params - checkboxes
+    private function validateparams($params_map, $fromform, $values, &$error_msg) {
+        foreach ($params_map as $group => $params) {
+            if ($values[$group] !== 0) { // for each coefficient with non-zero significance validate params - checkboxes
                 $counter = false;
-                foreach ($groups[$coefs[$key]] as $checkbox) {
-                    if ($fromform[$checkbox] == 1) {
+                foreach ($params as $param) {
+                    if ($fromform[$param] == 1) {
                         $counter = true;
                         break;
                     }
                 }
                 if (!$counter) { // concatenate error string for a group === $coefs[$key]
-                    $prefix = empty($errors[$coefs[$key]]) ? '' : $errors[$coefs[$key]] . ' | ';
-                    $errors[$coefs[$key]] = $prefix . get_string('tickacheckbox', 'qtype_digitalliteracy');
+                    $error_msg[$group][] = get_string('tickacheckbox', 'qtype_digitalliteracy');
                 }
             }
+        }
+    }
+
+    private function validatefiletypelist($fromform, &$errors) {
+        if ($fromform['filetypeslist'] === '') {
+            $errors['filetypeslist'] = get_string('emptyfiletypelist', 'qtype_digitalliteracy');
+            return;
+        }
+        $qtype = question_bank::get_qtype('digitalliteracy');
+        $accepted = call_user_func(array($qtype, $fromform['responseformat']. '_filetypes'));
+        if (!empty($types = array_diff(explode(',', $fromform['filetypeslist']), $accepted))) {
+            $errors['filetypeslist'] = get_string('incorrectfiletypes', 'qtype_digitalliteracy',
+                implode(', ', $types));
         }
     }
 
@@ -277,12 +292,12 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         $response = array('attachments' => new question_file_saver($fromform['sourcefiles_filemanager'],
             'qtype_digitalliteracy', 'sourcefiles'), 'validation' => true);
         $flag = false;
-        if (($error = $question->validate_response($response)) !== '') {
+        if (!empty($error = $question->validate_response($response))) {
             $errors[$error_types['sourcefiles']] = $error;
             $flag = true;
         }
-        if ($question->hastemplatefile && ($error = $this->validate_files($fromform,
-                'templatefiles_filemanager')) !== '') {
+        if ($question->hastemplatefile && !empty($error = $this->validate_files($fromform,
+                'templatefiles_filemanager'))) {
             $errors[$error_types['templatefiles']] = $error;
             $flag = true;
         }
@@ -295,7 +310,7 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         $result = $question->grade_response($response);
         list($fraction, $state) = $result;
         if ($fraction != 1.0) {
-            $errors[$error_types['']] = count($result) > 2 ? $result[2]['_error']:
+            $errors[$error_types['']] = count($result) > 2 ? $result[2]['_error'] :
                 get_string('validationerror', 'qtype_digitalliteracy');
         }
     }

@@ -70,7 +70,7 @@ define(function() {
 
         const fileTypesMatches = types['matches'];
         const fileTypeDefaults = types['defaults'];
-        const format = document.getElementById('id_responseformat');
+        const responseFormat = document.getElementById('id_responseformat');
         const fileTypeInput = document.getElementById('id_filetypeslist');
         fileTypeInput.setAttribute('readonly', 'true');
 
@@ -101,61 +101,86 @@ define(function() {
             hint.id = key + '_help_title';
         }
 
-        format.addEventListener('change', function () {
+        responseFormat.addEventListener('change', function () {
             changeLabels();
         });
-        format.dispatchEvent(new CustomEvent('change'));
+        changeLabels(true);
 
         function textWrapper(label, name, key, postfix) { // put (wrap) label text into a span
             label.normalize();
-            const TextNodes = [];
-            label.childNodes.forEach(function (node) {
+            let text = "";
+            const textNode = Array.from(label.childNodes).find(function (node) {
                 if (node.nodeType === Node.TEXT_NODE) {
-                    const text = typeof node.textContent == 'string' ? node.textContent : node.innerText;
-                    if (text.trim() !== "")
-                        TextNodes.push(node);
+                    text = typeof node.textContent == 'string' ? node.textContent : node.innerText;
+                    return text.trim() !== "";
                 }
-            })
-            if (TextNodes.length !== 1) {
-                console.log('TextNodes.length = ' + TextNodes.length + ' label id ' + label.id);
+                return false;
+            });
+            if (!textNode) {
+                console.log('TextNode not found, label id ' + label.id);
+                return;
             }
-            const textNode = TextNodes[0];
             const spanNode = document.createElement('span');
-            const text = typeof textNode.textContent == 'string' ? textNode.textContent : textNode.innerText;
             spanNode.appendChild(document.createTextNode(text));
             spanNode[key] = name + postfix;
             label.replaceChild(spanNode, textNode);
         }
 
-        function changeLabels() { // set new labels (depending on responseformat value)
-            const value = format.options[format.selectedIndex].value;
+        function changeLabels(load = false) { // set new labels (depending on responseformat value)
+            const value = responseFormat.options[responseFormat.selectedIndex].value;
             for (const param of params) {
-                const element = document.getElementById('id_' + param + '_label_span');
-                element.replaceChild(document.createTextNode(labels[param + '_' + value]),
-                    element.firstChild);
+                const label = document.getElementById('id_' + param + '_label_span');
+                const element = document.getElementById('id_' + param);
+                hideOrUnhideAndRename(label, element, element.parentElement, labels[param + '_' + value]);
+                element.dispatchEvent(new CustomEvent('change'));
             }
             for (const group of groups) {
-                const element = document.getElementById('fgroup_id_' + group + '_label_span');
-                element.replaceChild(document.createTextNode(labels[group + '_' + value]),
-                    element.firstChild);
+                const label = document.getElementById('fgroup_id_' + group + '_label_span');
+                const element = document.getElementById('fgroup_id_' + group);
+                const newText = labels[group + '_' + value];
+                if (!hideOrUnhideAndRename(label, element, element, newText)) {
+                    const title = document.getElementById('fgroup_id_' + group + '_help_title');
+                    title.setAttribute('title', labels[group + '_help_title_' + value]);
+                    title.setAttribute('aria-label', labels[group + '_help_title_' + value]);
 
-                const title = document.getElementById('fgroup_id_' + group + '_help_title');
-                title.setAttribute('title', labels[group + '_help_title_' + value]);
-                title.setAttribute('aria-label', labels[group + '_help_title_' + value]);
-
-                const text = document.getElementById('fgroup_id_' + group + '_help_text');
-                text.setAttribute('data-content', labels[group + '_help_text_' + value]);
+                    const text = document.getElementById('fgroup_id_' + group + '_help_text');
+                    text.setAttribute('data-content', labels[group + '_help_text_' + value]);
+                }
+                const coef = document.getElementById('id_' + group + 'coef');
+                if (hideOrUnhideAndRename(null, coef, coef.parentElement.parentElement, newText)) {
+                    coef.value = 0;
+                }
+                coef.dispatchEvent(new CustomEvent('update'));
             }
+            filetypes_description(load, value);
+        }
 
-            // changing filetypelist labels (or inline text)
-            fileTypeInput.value = fileTypeDefaults[value]['value'];
-            const description = document.querySelector('[data-filetypesdescriptions="id_filetypeslist"]');
-            description.firstChild.innerHTML = labels['filetype_description'];
-            const descriptionSample = description.firstChild.firstChild.firstChild;
-            descriptionSample.firstChild.replaceChild(document.createTextNode(
-                fileTypeDefaults[value]['description'] + ' '), descriptionSample.firstChild.firstChild);
-            descriptionSample.lastChild.replaceChild(document.createTextNode(fileTypeInput.value),
-                descriptionSample.lastChild.firstChild);
+        function hideOrUnhideAndRename(label, element, container, newText) {
+            if (newText === undefined) {
+                element.hidden = true; // flag (needed in other js scripts)
+                container.style.display = 'none';
+            } else {
+                element.hidden = false;
+                container.style.display = '';
+                if (label) {
+                    label.replaceChild(document.createTextNode(newText), label.firstChild);
+                }
+            }
+            return element.hidden;
+        }
+
+        // changing filetypelist labels
+        function filetypes_description(load, value) {
+            if (!load) {
+                fileTypeInput.value = fileTypeDefaults[value]['value'];
+                const description = document.querySelector('[data-filetypesdescriptions="id_filetypeslist"]');
+                description.firstChild.innerHTML = labels['filetype_description'];
+                const descriptionSample = description.firstChild.firstChild.firstChild;
+                descriptionSample.firstChild.replaceChild(document.createTextNode(
+                    fileTypeDefaults[value]['description'] + ' '), descriptionSample.firstChild.firstChild);
+                descriptionSample.lastChild.replaceChild(document.createTextNode(fileTypeInput.value),
+                    descriptionSample.lastChild.firstChild);
+            }
         }
 
         const bodyChecker = function () {
@@ -167,14 +192,39 @@ define(function() {
             } else {
                 // body is always rerendered, that's why I use attribute to deteriorate the old from the new one
                 body.setAttribute('data-used', 'true');
-                const value = format.options[format.selectedIndex].value;
+                const value = responseFormat.options[responseFormat.selectedIndex].value;
                 for (const child of body.children) { // leaving only type, which are acceptable now
                     let option = '';
                     if (child.getAttribute('data-filetypesbrowserkey') !== fileTypesMatches[value]) {
                         option = 'none';
+                    } else {
+                        const browserkeys = child.querySelectorAll('input[data-filetypesbrowserkey]' +
+                            '[type="checkbox"]');
+                        let count = fileTypeInput.value.toString();
+                        count = count === "" ? 0 : count.replace(',',
+                            ' ').split(' ').length;
+                        const checked = {count : count, last : null};
+                        disableLastKey(browserkeys, checked);
+                        for (const browserkey of browserkeys) {
+                            browserkey.addEventListener('change', function () {
+                                checked.count += browserkey.checked ? 1 : -1;
+                                disableLastKey(browserkeys, checked);
+                            });
+                        }
                     }
                     child.style.display = option;
                 }
+            }
+        }
+
+        function disableLastKey(browserkeys, checked) {
+            if (checked.count === 1) {
+                checked.last = Array.from(browserkeys).find(function (el) {
+                    return el.checked;
+                });
+            }
+            if (checked.last) {
+                checked.last.disabled = checked.count === 1;
             }
         }
 

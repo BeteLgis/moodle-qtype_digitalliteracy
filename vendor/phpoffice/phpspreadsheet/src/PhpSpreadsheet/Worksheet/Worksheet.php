@@ -24,7 +24,6 @@ use PhpOffice\PhpSpreadsheet\Style\Color;
 use PhpOffice\PhpSpreadsheet\Style\Conditional;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Style\Style;
-use qtype_digitalliteracy_compare_base;
 
 class Worksheet implements IComparable
 {
@@ -1192,7 +1191,6 @@ class Worksheet implements IComparable
      */
     public function getCell($pCoordinate, $createIfNotExists = true)
     {
-        qtype_digitalliteracy_compare_base::is_memory_exhausted('worksheet_1262');
         // Uppercase coordinate
         $pCoordinateUpper = strtoupper($pCoordinate);
 

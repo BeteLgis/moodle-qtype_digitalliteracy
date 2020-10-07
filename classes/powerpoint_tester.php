@@ -6,15 +6,21 @@ use PhpOffice\PhpPresentation\Style\Color;
 use PhpOffice\PhpPresentation\Style\Alignment;
 
 
-class qtype_digitalliteracy_powerpoint_tester extends qtype_digitalliteracy_compare_base
+class qtype_digitalliteracy_powerpoint_tester extends qtype_digitalliteracy_tester_base
 {
-    public function validate_file($filepath, $filename) {
-        //TODO
-        return 'Power point is not supported yet!';
+    public static function get_strings() {
+        return array();
     }
 
-    public function compare_files($data)
+    public function validate_file() {
+        //TODO
+        return '';
+    }
+
+    public function compare_files()
     {
+        return array('file_saver' => qtype_digitalliteracy_comparator::
+        generate_question_file_saver([]), 'fraction' => 1);
         $samplePptx = IOFactory::load($data->response_path);
         $analysPptx = IOFactory::load($data->source_path);
 
