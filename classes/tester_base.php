@@ -1,5 +1,4 @@
 <?php
-ini_set('memory_limit', convert(memory_get_usage(true) + 20 * pow(2, 20)));
 function convert($usage) {
     $unit = array('B','K','M','G');
     return @round($usage/pow(1024,($i=floor(log($usage,1024)))),2).$unit[$i];
@@ -10,10 +9,11 @@ if ($argc < 2)
     return; // in case the file is included
 
 if (!($data = @unserialize(base64_decode($argv[1])))) {
-    echo serialize(array('error' => 'Internal error: couldn\'t unserialize data.'));
+    echo 'Internal error: couldn\'t unserialize data.';
     exit(1);
 }
 
+ini_set('memory_limit', convert(memory_get_usage(true) + $data->maxmemory));
 $shell = new Shell($data->request_directory, $data->errors, true);
 
 unset($CFG);
@@ -33,7 +33,7 @@ try {
 } catch (Exception $ex) { // made for backwards compatibility
     $shell->modify_result(array('error' => $ex->getMessage()));
 }
-exit('Success');
+exit(0);
 
 
 class Shell {
@@ -58,8 +58,11 @@ class Shell {
                 if (!empty($this->errors[$key])) {
                     $msg = $this->errors[$key];
                 } else {
+                    $pos = strpos($error['message'], '.');
+                    $message = $pos ? substr($error['message'], 0, $pos) : $error['message'];
+
                     $msg = sprintf($this->errors['fatalerror'], $filename. '.php',
-                        $error['line'], substr($error['message'], 0, 48));
+                        $error['line'], $message);
                 }
                 $this->modify_result(array('error' => $msg));
             }
@@ -77,7 +80,7 @@ class Shell {
                 break;
         }
         if (!isset($tester))
-            throw new dml_read_exception('Unexpected error.');
+            throw new Exception('Validation error.');
 
         return isset($data->grade_response) ? $tester->compare_files() : $tester->validate_file();
     }

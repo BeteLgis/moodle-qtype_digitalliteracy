@@ -102,8 +102,8 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
     }
 
     /** The data passed to {@link qtype_digitalliteracy_compare_base::compare_files()} as a parameter */
-    public static function response_data() {
-        $settings = new qtype_digitalliteracy_test_settings();
+    public static function response_data($responseformat) {
+        $settings = new qtype_digitalliteracy_test_settings($responseformat);
         return array_merge(array('contextid', 'id','responseformat', 'hastemplatefile',
             'excludetemplate'), $settings->get_coefs(), $settings->get_params());
     }
@@ -118,7 +118,7 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
         $data = new stdClass();
         $data->validation = false; // data->validation used to deteriorate
         // validation run from the real one (used in comparator.php)
-        foreach (self::response_data() as $value) {
+        foreach (self::response_data($this->responseformat) as $value) {
             $data->$value = $this->$value;
         }
         if (array_key_exists('validation', $response)) {

@@ -42,11 +42,12 @@ class qtype_digitalliteracy_comparator {
             throw new coding_exception('File tester_base.php not found!');
 
         $data->errors = $this->shell_errors();
+        $data->maxmemory = 20 * pow(2, 20); // 20 MB
 
-        $output = shell_exec("php $path ". base64_encode(serialize($data)));
-        if (is_null($output) || $res = @unserialize($output)) {
-            if (!empty($res['error']))
-                return $res;
+        exec("php $path ". base64_encode(serialize($data)), $output, $return_var);
+        if ($return_var === 1) {
+            if (!empty($output))
+                return array('error' => $output[0]); // implode ?
             throw new coding_exception('Unknown error has occurred in the shell.');
         }
 

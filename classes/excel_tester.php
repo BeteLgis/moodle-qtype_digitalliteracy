@@ -17,6 +17,7 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_tester_ba
     public static function get_strings() {
         return array('error_coordinate_394' => get_string('error_coordinate_394', 'qtype_digitalliteracy'),
             'error_stringhelper_481' => get_string('error_stringhelper_481', 'qtype_digitalliteracy'),
+            'error_xlsx_442' => get_string('error_stringhelper_481', 'qtype_digitalliteracy'),
             'error_sheetlimit' => get_string('error_sheetlimit', 'qtype_digitalliteracy'),
             'error_zerocells' => get_string('error_zerocells', 'qtype_digitalliteracy'));
     }

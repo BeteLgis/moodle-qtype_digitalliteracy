@@ -65,6 +65,7 @@ $string['tickacheckbox'] = 'Tick one setting at least';
 $string['validationerror'] = 'Wrong comparison parameters (it\'s impossible to get max mark). Perhaps, source and template files are same and "Exclude template" is checked';
 $string['emptyfiletypelist'] = 'File types list should not be empty';
 $string['incorrectfiletypes'] = 'Incorrect file extensions: {$a}';
+$string['elementchanged'] = 'The element (its html code) was changed by the user';
 
 // comparator.php file errors
 $string['error_incorrectextension'] = 'File with wrong extension: {$a}.';

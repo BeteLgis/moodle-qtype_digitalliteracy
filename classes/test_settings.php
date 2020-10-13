@@ -6,9 +6,9 @@ class qtype_digitalliteracy_test_settings {
     private $coefs;
     private $params;
 
-    public function __construct() {
+    public function __construct($responseformat = '') {
         $this->structures = new qtype_digitalliteracy_test_structures();
-        $this->set_groups();
+        $this->set_groups($responseformat);
     }
 
     public function get_groups() {
@@ -95,28 +95,22 @@ class qtype_digitalliteracy_test_settings {
 
 class qtype_digitalliteracy_test_structures {
     // templates (structures)
-    private $excel_structure = array(4, 4, 4);
-    private $powerpoint_structure = array(2, 2);
+    private $structures = array('excel' => array(4, 4, 4), 'powerpoint' => array(2, 2));
+    private $biggest_structure = array();
 
-    public function get_structure($responseformat) {
-        return strlen($responseformat) === 0 ? $this->biggest_structure() :
-            $this->{$responseformat. '_structure'};
+    public function __construct() {
+        array_unshift($this->structures, array($this, 'find_biggest_structure'));
+        call_user_func_array('array_map', $this->structures);
     }
 
-    private function biggest_structure() {
-        $qtype = question_bank::get_qtype('digitalliteracy');
-        $formats = array_keys($qtype->response_formats());
-        $max = 0;
-        $result = array();
-        foreach ($formats as $format) {
-            $structure = $this->{$format. '_structure'};
-            $sum = array_sum($structure);
-            if ($sum > $max) {
-                $max = $sum;
-                $result = $structure;
-            }
-        }
-        return $result;
+    public function get_structure($responseformat) {
+        return empty($responseformat) ? $this->biggest_structure : $this->structures[$responseformat];
+    }
+
+    private function find_biggest_structure() {
+        $this->biggest_structure[] = max(array_map(function ($val) {
+            return $val ?? 0;
+        }, func_get_args()));
     }
 }
 

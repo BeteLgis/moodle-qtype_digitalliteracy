@@ -110,6 +110,7 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
     /**
      * Creates necessary data structure for response format change action [select element]
      * and passes that data to JS (AMD)
+     * @param $responseformats {@link qtype_digitalliteracy::response_formats()}
      * @param $grading_options qtype_digitalliteracy_test_settings
      */
     private function responseformat_change_listeners(&$mform, $responseformats, $grading_options) {
@@ -140,7 +141,11 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
             array($coefs));
     }
 
-    /** @return array of the labels for various response options */
+    /**
+     * @param $responseformats {@link qtype_digitalliteracy::response_formats()}
+     * @param $grading_options qtype_digitalliteracy_test_settings
+     * @return array of the labels for various response options
+     */
     private function createlabels($responseformats, $grading_options) {
         $responseformats = array_keys($responseformats);
         $labels = array();
@@ -200,8 +205,10 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
 
     public function validation($fromform, $files) {
         $errors = parent::validation($fromform, $files);
-        $grading_options = new qtype_digitalliteracy_test_settings();
-        $grading_options->set_groups($fromform['responseformat']);
+        if ($this->validatefields($fromform, $errors))
+            return $errors;
+
+        $grading_options = new qtype_digitalliteracy_test_settings($fromform['responseformat']);
         $error_msg = array();
 
         // coefs_map - coef [significance text area] => group association
@@ -217,12 +224,54 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
                 $errors[$group] = implode(' | ', $value);
         }
 
-        $this->validatefiletypelist($fromform,$errors);
-
         if (empty($errors))
             $this->validatedata($fromform, $errors);
 
         return $errors;
+    }
+
+    private function formdata() {
+        $settings = new qtype_digitalliteracy_test_settings();
+        return array_merge(array('responseformat', 'attachmentsrequired', 'filetypeslist',
+            'sourcefiles_filemanager', 'hastemplatefile', 'excludetemplate', 'templatefiles_filemanager'),
+            $settings->get_coefs(), $settings->get_params(), array_keys($settings->group_common_params()));
+    }
+
+    private function validatefields($fromform, &$errors) {
+        $qtype = question_bank::get_qtype('digitalliteracy');
+
+        foreach ($this->formdata() as $value) {
+            if (!isset($fromform[$value]))
+                $errors[$value] = get_string('elementchanged', 'qtype_digitalliteracy');
+        }
+        if (!empty($errors))
+            return true;
+
+        if (!in_array($fromform['responseformat'], array_flip($qtype->response_formats())))
+            $errors['responseformat'] = get_string('elementchanged',
+                'qtype_digitalliteracy');
+        else
+            $this->validatefiletypelist($qtype, $fromform,$errors);
+
+        if (!in_array($fromform['attachmentsrequired'], $qtype->attachments_required_options()))
+            $errors['attachmentsrequired'] = get_string('elementchanged',
+                'qtype_digitalliteracy');
+
+        return !empty($errors);
+    }
+
+    private function validatefiletypelist($qtype, $fromform, &$errors) {
+        if (empty($fromform['responseformat']))
+            return;
+        if ($fromform['filetypeslist'] === '') {
+            $errors['filetypeslist'] = get_string('emptyfiletypelist', 'qtype_digitalliteracy');
+            return;
+        }
+        $accepted = call_user_func(array($qtype, $fromform['responseformat']. '_filetypes'));
+        if (!empty($types = array_diff(explode(',', $fromform['filetypeslist']), $accepted))) {
+            $errors['filetypeslist'] = get_string('incorrectfiletypes', 'qtype_digitalliteracy',
+                implode(', ', $types));
+        }
     }
 
     /** Validates coefficients (int int range [0,100] and sum of them is 100) */
@@ -266,19 +315,6 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
                     $error_msg[$group][] = get_string('tickacheckbox', 'qtype_digitalliteracy');
                 }
             }
-        }
-    }
-
-    private function validatefiletypelist($fromform, &$errors) {
-        if ($fromform['filetypeslist'] === '') {
-            $errors['filetypeslist'] = get_string('emptyfiletypelist', 'qtype_digitalliteracy');
-            return;
-        }
-        $qtype = question_bank::get_qtype('digitalliteracy');
-        $accepted = call_user_func(array($qtype, $fromform['responseformat']. '_filetypes'));
-        if (!empty($types = array_diff(explode(',', $fromform['filetypeslist']), $accepted))) {
-            $errors['filetypeslist'] = get_string('incorrectfiletypes', 'qtype_digitalliteracy',
-                implode(', ', $types));
         }
     }
 
