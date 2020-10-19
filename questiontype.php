@@ -11,8 +11,6 @@ class qtype_digitalliteracy extends question_type {
         return false;
     }
 
-    /** An array of all the response variables that might have corresponding files.
-     * @Overrides question_type::response_file_areas */
     public function response_file_areas() {
         return array('attachments', '_mistakes'); // _mistakes as it is a qt_var
     }
@@ -21,7 +19,7 @@ class qtype_digitalliteracy extends question_type {
         return array_merge(array('qtype_digitalliteracy_option',
             'responseformat', 'attachmentsrequired',
             'hastemplatefile', 'excludetemplate'),
-            (new qtype_digitalliteracy_test_settings())->get_all_options());
+            (new qtype_digitalliteracy_settings())->get_all_options());
     }
 
     /**
@@ -105,7 +103,7 @@ class qtype_digitalliteracy extends question_type {
      */
     public function attachments_required_options() {
         return array(
-            1 => '1',
+            1 => '1'
 //            2 => '2',
 //            3 => '3'
         );

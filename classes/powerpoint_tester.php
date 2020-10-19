@@ -6,7 +6,7 @@ use PhpOffice\PhpPresentation\Style\Color;
 use PhpOffice\PhpPresentation\Style\Alignment;
 
 
-class qtype_digitalliteracy_powerpoint_tester extends qtype_digitalliteracy_tester_base
+class qtype_digitalliteracy_powerpoint_tester extends qtype_digitalliteracy_base_tester
 {
     public static function get_strings() {
         return array();
@@ -19,7 +19,7 @@ class qtype_digitalliteracy_powerpoint_tester extends qtype_digitalliteracy_test
 
     public function compare_files()
     {
-        return array('file_saver' => qtype_digitalliteracy_comparator::
+        return array('file_saver' => qtype_digitalliteracy_sandbox::
         generate_question_file_saver([]), 'fraction' => 1);
         $samplePptx = IOFactory::load($data->response_path);
         $analysPptx = IOFactory::load($data->source_path);
@@ -45,7 +45,7 @@ class qtype_digitalliteracy_powerpoint_tester extends qtype_digitalliteracy_test
         $mistakes_path = $data->request_directory . '\\' . $mistakes_name;
         $writer = IOFactory::createWriter($samplePptx);
         $writer->save($mistakes_path);
-        return array('file_saver' => qtype_digitalliteracy_comparator::
+        return array('file_saver' => qtype_digitalliteracy_sandbox::
         generate_question_file_saver($mistakes_name, $mistakes_path), 'fraction' => $fraction);
     }
 
