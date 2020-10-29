@@ -8,9 +8,6 @@ use PhpOffice\PhpPresentation\Style\Alignment;
 
 class qtype_digitalliteracy_powerpoint_tester extends qtype_digitalliteracy_base_tester
 {
-    public static function get_strings() {
-        return array();
-    }
 
     public function validate_file() {
         //TODO
@@ -19,8 +16,7 @@ class qtype_digitalliteracy_powerpoint_tester extends qtype_digitalliteracy_base
 
     public function compare_files()
     {
-        return array('file_saver' => qtype_digitalliteracy_sandbox::
-        generate_question_file_saver([]), 'fraction' => 1);
+        return array();
         $samplePptx = IOFactory::load($data->response_path);
         $analysPptx = IOFactory::load($data->source_path);
 

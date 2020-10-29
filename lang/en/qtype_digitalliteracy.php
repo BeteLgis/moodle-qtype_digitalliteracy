@@ -5,31 +5,46 @@ $string['pluginnameadding'] = 'Adding a Digital Literacy question';
 $string['pluginnameediting'] = 'Editing a Digital Literacy question';
 $string['pluginnamesummary'] = 'Provides a platform for automatically gradable Microsoft Excel, PowerPoint or Word questions.';
 
-// base_tester.php
-$string['error_fatal'] = 'File {@a->file}, line {@a->line}, message {@a->msg}.';
-$string['error_noreader'] = 'Can\'t read or accept file {$a->file}. Message: {$a->msg}.';
+// exception.php
+$string['exception_shell'] = 'Shell exception';
 
 // excel_tester.php
-$string['errorsandbox_coordinate_394'] = 'Using all row (column) selection in formulas is prohibited!';
-$string['errorsandbox_stringhelper_481'] = 'The uploaded file is too big!';
-$string['errorsandbox_sheetlimit'] = 'Spreadsheet has no sheets or more than one sheet!';
-$string['errorsandbox_zerocells'] = 'Sheet with title {$a->title} has 0 non-empty cells!';
-
-// exception.php
-$string['error_unexpected'] = 'Unexpected error: {$a}';
+$string['shellex_coordinate_394'] = 'Using all row (column) selection in formulas is prohibited.';
+$string['shellex_stringhelper_481'] = 'The uploaded file is too big in size.';
+$string['shellex_xlsx_442'] = $string['shellex_stringhelper_481'];
+$string['shellerr_sheetlimit'] = 'Spreadsheet has no sheets or more than one sheet.';
+$string['shellerr_zerocells'] = 'Sheet with title {$a->title} has 0 non-empty cells.';
 
 // powerpoint_tester.php
 
 
-// sandbox.php file errors
-$string['error_notesterbase'] = 'File tester_base.php not found.';
-$string['error_unknownshell'] = 'Unknown error has occurred in the shell.';
-$string['error_nofilespassed'] = 'Uploaded files weren\'t found in a corresponding file area.';
-$string['error_filecopy'] = 'Failed to copy a file {$a} into request directory.';
-$string['error_filenotexist'] = 'File \'{$a->name}\' by path \'{$a->path}\' doesn\'t exist.';
-$string['error_disallowedfiletype'] = 'File {@a} has a wrong type (extension).';
+// word_tester.php
+$string['shellerr_emtyfile'] = 'Empty file (or only whitespace characters).';
+
+// sandbox.php
+$string['exception_noshell'] = 'File \'shell.php\' not found.';
+$string['exception_unknownshell'] = 'Unknown exception (empty shell output).';
+$string['exception_unexpected'] = 'Unexpected shell exception with code (message): {$a}.';
+$string['exception_resultnotarray'] = 'Not an array was returned from the shell.';
+$string['exception_emptyresultshell'] = 'Empty (in terms of \'errors\' or \'fraction\' keys) array was returned from the shell.';
+$string['exception_nofilespassed'] = 'Uploaded files weren\'t found in a corresponding file area.';
+$string['exception_filecopy'] = 'Failed to copy a file {$a} into request directory.';
+$string['exception_filenotexist'] = 'File \'{$a->name}\' by path \'{$a->path}\' doesn\'t exist.';
+$string['error_unexpected'] = 'Unexpected shell error with code: {$a}.';
+$string['error_disallowedfiletype'] = 'File {$a} has a wrong type (extension).';
 $string['error_tooshortfilename'] = 'File \'{$a}\' has a too short name (at least 3 characters excluding extension and a dot are needed).';
 $string['error_insufficientattachments'] = 'Not proper amount of attachments, {$a} required.';
+
+// shell.php
+$string['shellex_corrupteddata'] = 'Couldn\'t decode or unserialize data received by the shell.';
+$string['shellex_fatal'] = 'File {$a->file}, line {$a->line}, message {$a->msg}.';
+$string['shellex_wrongresponseformat'] = 'Not a registered response format: {$a}.';
+
+// shell_result.php
+$string['shellex_resultwrite'] = 'File write error has occurred. Maybe the folder {$a} has a restricted write permissions.';
+$string['shellex_prohibitedread'] = 'File has to be read from within Moodle.';
+$string['shellex_noresultfile'] = 'The resulting file in the request directory \'{$a}\' wasn\'t created.';
+$string['shellex_resultread'] = 'Couldn\'t read and decode (deserialize) the result from file {$a}.';
 
 // edit_digitalliteracy_form.php
 $string['responseformat'] = 'Response format';
@@ -85,6 +100,15 @@ $string['groupthreeparamone_powerpoint'] = 'Bullets';
 $string['groupthreeparamtwo_powerpoint'] = '???';
 $string['groupthree_help_title_powerpoint'] = 'Compare Text formatting';
 $string['groupthree_help_text_powerpoint'] = 'Consider bullets and (or) ??? in comparison';
+// word
+$string['grouponeparamone_word'] = 'Text';
+$string['grouponeparamtwo_word'] = 'Calculated value';
+$string['groupone_help_title_word'] = 'Compare Text';
+$string['groupone_help_text_word'] = 'Consider text specific parameters in comparison.';
+$string['grouptwoparamone_word'] = 'Bold';
+$string['grouptwoparamtwo_word'] = 'Fill color';
+$string['grouptwo_help_title_word'] = 'Compare Styles';
+$string['grouptwo_help_text_word'] = 'Consider style text specific parameters in comparison.';
 // common
 $string['binarygrading'] = 'Binary grading';
 $string['showmistakes'] = 'Show mistake files to students';
@@ -111,9 +135,10 @@ $string['unknownerror'] = 'An error occurred during answer check. Read more deta
 // questiontype.php
 $string['excel'] = 'Excel';
 $string['powerpoint'] = 'Power point';
+$string['word'] = 'Word';
 
 // renderer.php
-$string['sourcefiles_heading'] = '';
+$string['sourcefiles_heading'] = 'Source file';
 $string['templatefiles_heading'] = 'Template file';
 $string['answerfiles_heading'] = 'Answer file';
 $string['mistakefiles_heading'] = 'Mistakes file';

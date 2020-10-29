@@ -129,12 +129,14 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         $mform->addElement('html', $src);
 
         // used for renaming filetypelist
-        $types = array('matches' => ['excel' => 'spreadsheet', 'powerpoint' => 'presentation'],
+        $types = array('matches' => ['excel' => 'spreadsheet', 'powerpoint' => 'presentation', 'word' => 'document'],
             'defaults' => ['excel' => ['value' => '.xlsx', 'description' =>
                 get_string('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','mimetypes')],
                 'powerpoint' => ['value' => '.pptx', 'description' =>
                     get_string('application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                        'mimetypes')]]);
+                        'mimetypes')],
+                'word' => ['value' => '.docx', 'description' =>
+                    get_string('application/vnd.openxmlformats-officedocument.wordprocessingml.document','mimetypes')]]);
 
         global $PAGE;
         $params = $settings->get_params();
@@ -407,13 +409,12 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
      * @return string an error message or an empty string
      */
     private function validate_files($fromform, $element) {
-        global $USER;
         $fs = get_file_storage();
-        $contextid = context_user::instance($USER->id)->id;
-        $files = $fs->get_area_files($contextid, 'user', 'draft',
+        $files = $fs->get_area_files($this->context->id, 'user', 'draft',
             $fromform[$element], 'filename', false);
 
-        return (new qtype_digitalliteracy_sandbox())->validate_files($files, $fromform['responseformat'],
+        return (new qtype_digitalliteracy_sandbox($this->context->id))
+            ->validate_files($files, $fromform['responseformat'],
             $fromform['filetypeslist'], $fromform['attachmentsrequired']);
     }
 

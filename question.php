@@ -88,7 +88,8 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
         } else
             return get_string('notanswered', 'qtype_digitalliteracy');
 
-        return (new qtype_digitalliteracy_sandbox())->validate_files($files, $this->responseformat,
+        return (new qtype_digitalliteracy_sandbox($this->contextid))
+            ->validate_files($files, $this->responseformat,
             $this->filetypeslist, $this->attachmentsrequired);
     }
 
@@ -115,23 +116,23 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
      * @return array a fraction between {@link get_min_fraction()}
      * and {@link get_max_fraction()}, the corresponding {@link question_state} (right, partial or wrong)
      * and, optionally, _error string or _mistakes {@link question_file_saver} containing created mistakes files.
+     * @throws coding_exception
      */
     public function grade_response(array $response) {
         $data = new stdClass();
         foreach (self::response_data($this->responseformat) as $value) {
             $data->$value = $this->$value;
         }
-        if (isset($this->templatefiles_draftid))
-            $data->templatefiles_draftid = $this->templatefiles_draftid;
+        if (isset($this->templatefilesdraftid))
+            $data->templatefilesdraftid = $this->templatefilesdraftid;
         $data->validation = isset($this->validation); // flag to identify a validation run
 
-        $sandbox = new qtype_digitalliteracy_sandbox();
-        $result = $sandbox->grade_response($response, $data);
+        $result = (new qtype_digitalliteracy_sandbox($this->contextid))
+            ->grade_response($response, $data);
+        if (!empty($result['errors']))
+            return array(0, question_state::$invalid, array('_error' => $result['errors']));
 
-        if (isset($result['error']))
-            return array(0, question_state::$invalid, array('_error' => $result['error']));
-
-        $fraction = $result['fraction'];
+        $fraction = $result['fraction'] ?? 0;
         if ($this->binarygrading) {
             $fraction = $fraction < 1 ? 0 : 1;
         }

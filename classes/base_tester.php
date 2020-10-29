@@ -14,31 +14,17 @@ class qtype_digitalliteracy_base_tester {
     }
 
     /**
-     * @return array an array containing all string (usually returned by {@link get_string()})
-     * needed to be passed to the shell
-     */
-    public static function get_strings() {
-        return array('error_fatal' => get_string('error_unexpected', 'qtype_digitalliteracy',
-            get_string('error_fatal', 'qtype_digitalliteracy')),
-            'error_noreader' => get_string('error_noreader', 'qtype_digitalliteracy'));
-    }
-
-    /**
      * Compares files and calculates the result (a fraction and the mistakes files).
      * Note that $data->templatepath is set only when the question has a template and it has to be excluded!
-     * @return array an array: {@link question_file_saver} and a fraction (or possibly an error)
+     * @param qtype_digitalliteracy_shell_result $result
      */
-    public function compare_files() {
-        return array();
-    }
+    public function compare_files($result) { }
 
     /**
      * Validate a file.
-     * @return array an empty array or an array containing the error message
+     * @param qtype_digitalliteracy_shell_result $result
      */
-    public function validate_file() {
-        return array();
-    }
+    public function validate_file($result) { }
 }
 
 /**

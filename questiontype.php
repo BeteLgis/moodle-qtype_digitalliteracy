@@ -94,7 +94,8 @@ class qtype_digitalliteracy extends question_type {
     public function response_formats() {
         return array(
             'excel' => get_string('excel', 'qtype_digitalliteracy'),
-            'powerpoint' => get_string('powerpoint', 'qtype_digitalliteracy')
+            'powerpoint' => get_string('powerpoint', 'qtype_digitalliteracy'),
+            'word' => get_string('word', 'qtype_digitalliteracy')
         );
     }
 
@@ -114,7 +115,8 @@ class qtype_digitalliteracy extends question_type {
      */
     public function attachments_filetypes_option() {
         return array(
-            'onlytypes' => array_merge($this->excel_filetypes(), $this->powerpoint_filetypes())
+            'onlytypes' => array_merge($this->excel_filetypes(), $this->powerpoint_filetypes(),
+                $this->word_filetypes())
         );
     }
 
@@ -124,6 +126,10 @@ class qtype_digitalliteracy extends question_type {
 
     public function powerpoint_filetypes() {
         return array('.pptx', '.odp');
+    }
+
+    public function word_filetypes() {
+        return array('.docx');
     }
 
     /**

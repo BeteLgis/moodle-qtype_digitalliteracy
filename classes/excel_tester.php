@@ -1,7 +1,5 @@
 <?php
 
-defined('MOODLE_INTERNAL') || die();
-
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Calculation\Calculation;
@@ -12,52 +10,30 @@ use PhpOffice\PhpSpreadsheet\Chart\DataSeries;
 /** Excel (spreadsheet) tester */
 class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_base_tester {
 
-    public static function get_strings() {
-        return array('error_coordinate_394' => get_string('errorsandbox_coordinate_394', 'qtype_digitalliteracy'),
-            'error_stringhelper_481' => get_string('errorsandbox_stringhelper_481', 'qtype_digitalliteracy'),
-            'error_xlsx_442' => get_string('errorsandbox_stringhelper_481', 'qtype_digitalliteracy'),
-            'error_sheetlimit' => get_string('errorsandbox_sheetlimit', 'qtype_digitalliteracy'),
-            'error_zerocells' => get_string('errorsandbox_zerocells', 'qtype_digitalliteracy'));
-    }
-
-    public function validate_file() {
-        $func = function () {
-            $reader = IOFactory::createReaderForFile($this->data->fullpath);
-            $reader->setReadEmptyCells(false);
-            $reader->setIncludeCharts(true);
-            $spreadsheet = $reader->load($this->data->fullpath);
-            Calculation::getInstance($spreadsheet)->disableCalculationCache();
-            if (($count = $spreadsheet->getSheetCount()) !== 1) {
-                return $this->data->fork ? get_string('error_sheetlimit', 'qtype_digitalliteracy') :
-                    $this->data->errors['error_sheetlimit'];
-            }
-            $sheet = $spreadsheet->getSheet(0);
-            $collection = array_flip($sheet->getCellCollection()->getCoordinates());
-            if (count($collection) === 0) {
-                $res = new stdClass();
-                $res->title = $sheet->getTitle();
-                return $this->data->fork ? get_string('error_zerocells', 'qtype_digitalliteracy') :
-                    sprintf($this->data->errors['error_zerocells'], $res->title);
-            }
-            foreach ($collection as $coordinate => $index) {
-                $cell = $sheet->getCell($coordinate, false);
-                $cell->getCalculatedValue(); // looking for infinite loops (like 'F:F' range)
-            }
-            return '';
-        };
-        $error = $func();
-        if (!empty($error)) {
-            $res = new stdClass();
-            $res->file = $this->data->filename;
-            $res->msg = $error;
-            $message = $this->data->fork ? get_string('error_noreader', 'qtype_digitalliteracy', $res)
-                : sprintf($this->data->errors['error_noreader'], $res->file, $res->msg);
-            throw new Exception($message);
+    public function validate_file($result) {
+        $reader = IOFactory::createReaderForFile($this->data->fullpath);
+        $reader->setReadEmptyCells(false);
+        $reader->setIncludeCharts(true);
+        $spreadsheet = $reader->load($this->data->fullpath);
+        Calculation::getInstance($spreadsheet)->disableCalculationCache();
+        if (($count = $spreadsheet->getSheetCount()) !== 1) {
+            $result->add_error('shellerr_sheetlimit');
+            return;
         }
-        return array();
+        $sheet = $spreadsheet->getSheet(0);
+        $collection = array_flip($sheet->getCellCollection()->getCoordinates());
+        if (count($collection) === 0) {
+            $result->add_error('shellerr_zerocells', $sheet->getTitle());
+            return;
+        }
+        foreach ($collection as $coordinate => $index) {
+            $cell = $sheet->getCell($coordinate, false);
+            $cell->getCalculatedValue(); // looking for infinite loops (like 'F:F' range)
+        }
+        return;
     }
 
-    public function compare_files() {
+    public function compare_files($result) {
         // preparing files and creating a reader
         $filetype = IOFactory::identify($this->data->responsepath);
         $reader = IOFactory::createReader($filetype);
@@ -84,10 +60,12 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_base_test
         list($fraction, $files) = $this->compare_with_coefficients($sheetSource,
             $sheetResponse, $sheetTemplate, $writer);
 
+        $result->set_fraction($fraction);
         if ($this->data->validation)
-            return array('fraction' => $fraction);
+            return;
 
-        return array('files' => $files, 'fraction' => $fraction);
+        $result->set_files($files);
+        return;
     }
 
     /**
@@ -317,7 +295,8 @@ class excel_cell_criterions {
     /** @param $cell Cell */
     static function describe_font($cell) {
         $description = array();
-        $font = $cell->getStyle()->getFont();
+        if (!($style = $cell->getStyle()) || !($font = $style->getFont()))
+            return $description;
         $description['name'] = $font->getName();
         $description['size'] = $font->getSize();
         $description['underline'] = $font->getUnderline();

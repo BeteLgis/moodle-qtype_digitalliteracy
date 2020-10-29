@@ -155,7 +155,7 @@ class qtype_digitalliteracy_settings {
  */
 class qtype_digitalliteracy_settings_structures {
     // array(4, 4, 4) - means 3 groups (and coefs) with 4 params in each
-    private $structures = array('excel' => array(4, 4, 4), 'powerpoint' => array(2, 2));
+    private $structures = array('excel' => array(4, 4, 4), 'powerpoint' => array(2, 2), 'word' => array(2, 2));
     private $placeholder = array();
 
     /**

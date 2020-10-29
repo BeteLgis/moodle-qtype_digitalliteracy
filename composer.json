@@ -2,6 +2,6 @@
     "require": {
         "phpoffice/phpspreadsheet": "^1.12",
         "phpoffice/phppresentation": "^0.9.0",
-        "ext-json": "*"
+        "phpoffice/phpword": "^0.17.0"
     }
 }
