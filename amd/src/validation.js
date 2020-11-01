@@ -80,7 +80,7 @@ define(function() {
                 message.push(errors[groupErrors[type]]);
             }
         }
-        var error = document.getElementById('id_error_' + group);
+        var error = document.getElementById('fgroup_id_error_' + group);
         var res = message.join(' | ');
         if (res.length === 0) {
             error.innerText = '';
