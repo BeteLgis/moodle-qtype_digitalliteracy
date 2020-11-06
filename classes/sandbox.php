@@ -80,19 +80,18 @@ class qtype_digitalliteracy_sandbox {
             return array('errors' => qtype_digitalliteracy_exception::conditional_throw($this->isteacher,
                 'exception_unknownshell', null, null, true));
         }
-        return $this->process_result($shell_result, $result, $isgrading);
+        return $this->process_result($result, $isgrading);
     }
 
     /**
      * Read and process result from the resulting file
      * @throws qtype_digitalliteracy_exception|moodle_exception an unexpected error
      */
-    private function process_result($shell_result, $result, $isgrading) {
+    private function process_result($result, $isgrading) {
         if (!empty($result['exceptions'])) {
             $msg = $this->numerate_strings($result['exceptions'], 'exception_unexpected');
             return array('errors' => qtype_digitalliteracy_exception::conditional_throw
-                ($this->isteacher, $msg, null, $this->isteacher ?
-                    $shell_result->read_log() : null, true));
+                ($this->isteacher, $msg, null, null, true));
         }
         return $this->validate_result($result, $isgrading);
     }
@@ -105,7 +104,7 @@ class qtype_digitalliteracy_sandbox {
             $code = $string['code'];
             $a = !empty($string['a']) ? $string['a'] : null;
             $message = strval($index + 1).'. '. ($strmanager->string_exists($code, 'qtype_digitalliteracy') ?
-                    get_string($code, 'qtype_digitalliteracy', $a) : 
+                    get_string($code, 'qtype_digitalliteracy', $a) :
                     get_string($unexpected, 'qtype_digitalliteracy', $code));
             array_push($result, $message);
             $index++;

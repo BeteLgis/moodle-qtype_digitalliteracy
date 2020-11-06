@@ -58,7 +58,8 @@ class qtype_digitalliteracy_object_describer {
     /**
      * Simply runs a criterion function in a try catch block.
      * @param object $object Cell, Chart and so on
-     * @param string $function a function to run (for example from {@link excel_chart_criterions})
+     * @param string|array $function a function to run (for example from {@link excel_chart_criterions})
+     * and, possibly, parameters to pass to it
      * @return mixed empty array means value can't be calculated (for example, an exception occurred
      * or $object is not set).
      */
@@ -68,6 +69,9 @@ class qtype_digitalliteracy_object_describer {
 
     /**
      * A description is an array of "key => function return value" pairs for each criterion.
+     * @param array $criterions as returned by {@link qtype_digitalliteracy_object_describer::get_settings()}
+     * @param object $object Cell, Chart and so on
+     * @return array
      */
     function describe_by_group($criterions, $object) {
         $description = array();
@@ -120,7 +124,7 @@ class qtype_digitalliteracy_object_describer {
                     $matches, $total);
             }
         } else {
-            if ($array1 === $array2)
+            if ($array1 == $array2)
                 $matches++;
             $total++;
         }

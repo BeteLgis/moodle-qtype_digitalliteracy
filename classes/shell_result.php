@@ -8,7 +8,6 @@ class qtype_digitalliteracy_shell_result {
     const NOT_SAVED_ERROR = 1;
 
     const RESULT_FILE = '/result.txt';
-    const LOG_FILE = '/error.log';
 
     private $result = array('errors' => array(), 'exceptions' => array(),
         'fraction' => 0, 'files' => array());
@@ -79,11 +78,5 @@ class qtype_digitalliteracy_shell_result {
             return array(false, qtype_digitalliteracy_exception::conditional_throw(false,
                 'shellex_resultread', $this->requestdir. self::RESULT_FILE));
         return array(true, $res);
-    }
-
-    function read_log() {
-        if (!($res = file_get_contents($this->requestdir. self::LOG_FILE)))
-            return '';
-        return $res;
     }
 }

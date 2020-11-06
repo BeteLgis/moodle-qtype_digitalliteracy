@@ -17,11 +17,6 @@ require_once($data->dirroot . '/question/type/digitalliteracy/classes/powerpoint
 require_once($data->dirroot . '/question/type/digitalliteracy/classes/word_tester.php');
 
 $shell = new qtype_digitalliteracy_shell($data->requestdirectory, $data->isteacher);
-if ($data->isteacher) {
-    ini_set('log_errors', 'on');
-    ini_set('error_reporting', E_ALL);
-    ini_set('error_log', $data->requestdirectory. qtype_digitalliteracy_shell_result::LOG_FILE);
-}
 ini_set('memory_limit', $shell::convert(memory_get_usage(true) + $data->maxmemory));
 
 try {
@@ -56,7 +51,7 @@ class qtype_digitalliteracy_shell {
     /**
      * Creates a new instance of a Shell.
      * @param string $requestdirectory see {@link make_request_directory()}
-     * @param bool $isteacher log errors to show them to a teacher
+     * @param bool $isteacher full error logs to show them to a teacher
      */
     function __construct($requestdirectory, $isteacher = false) {
         $this->result = new qtype_digitalliteracy_shell_result($requestdirectory);
