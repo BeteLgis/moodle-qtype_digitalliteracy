@@ -3,10 +3,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot . '/question/behaviour/interactive/behaviour.php');
-require_once($CFG->dirroot . '/question/engine/questionattemptstep.php');
-require_once($CFG->dirroot . '/question/type/digitalliteracy/questiontype.php');
-require_once($CFG->dirroot . '/question/type/questionbase.php');
 require_once($CFG->dirroot . '/question/behaviour/interactive_for_digitalliteracy/behaviour.php');
+require_once($CFG->dirroot . '/question/type/questionbase.php');
 
 /** Class for a response processing
  * @extends {@link question_graded_automatically}
@@ -25,8 +23,9 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
         return null;
     }
 
-    /** Produce a plain text summary of a response.
-     * @param array $response - a response, as might be passed to grade_response().
+    /**
+     * Produce a plain text summary of a response.
+     * @param array $response as returned by {@link question_attempt_step::get_qt_data()}
      * @return string containing all uploaded file's names (or no files uploaded message)
      */
     public function summarise_response(array $response) {
@@ -56,7 +55,8 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
     }
 
     /**
-     * Used to determine same responses
+     * Used to determine same responses.
+     * @param array $response as returned by {@link question_attempt_step::get_qt_data()}
      * @return array filename => content
      */
     private function get_attached_files(array $response) {
@@ -74,10 +74,12 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
         return $this->validate_response($response) == '';
     }
 
-    /** Validates response files: checks filetypes and reads file with reader
-     * (looks for loops, memory exhaustion problems [size of the file]
-     * and other possible errors that may occur during grading itself)
-     * @return string describing error, empty string if no errors were caught
+    /**
+     * Validates response files: checks filetypes, filename length and reads every file within a shell
+     * (looks for infinite loops, memory exhaustion problems etc).
+     * See {@link qtype_digitalliteracy_sandbox::validate_file()}.
+     * @param array $response as returned by {@link question_attempt_step::get_qt_data()}
+     * @return string a string describing error or an empty string if no errors were caught
      */
     public function validate_response(array $response) {
         if (array_key_exists('attachments', $response)
@@ -86,8 +88,8 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
         } else
             return get_string('notanswered', 'qtype_digitalliteracy');
 
-        $comparator = new qtype_digitalliteracy_comparator();
-        return $comparator->validate_files($files, $this->responseformat,
+        return (new qtype_digitalliteracy_sandbox($this->contextid))
+            ->validate_files($files, $this->responseformat,
             $this->filetypeslist, $this->attachmentsrequired);
     }
 
@@ -101,39 +103,40 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
         }
     }
 
-    /** The data passed to {@link qtype_digitalliteracy_compare_base::compare_files()} as a parameter */
-    public static function response_data() {
-        $settings = new qtype_digitalliteracy_test_settings();
+    /** The data passed to {@link qtype_digitalliteracy_base_tester::compare_files()} as a parameter. */
+    public static function response_data($responseformat) {
+        $settings = new qtype_digitalliteracy_settings($responseformat);
         return array_merge(array('contextid', 'id','responseformat', 'hastemplatefile',
             'excludetemplate'), $settings->get_coefs(), $settings->get_params());
     }
 
-    /** Grade a response to the question, returning a fraction between get_min_fraction()
-     * and get_max_fraction(), the corresponding question_state (right, partial or wrong)
-     * and _mistakes {@link question_file_saver} containing created analysis files
-     * @Implements {@link question_automatically_gradable::grade_response}
-     * @param array $response - responses, as returned by {@link question_attempt_step::get_qt_data()}.
+    /**
+     * Grade a response to the question.
+     * @param array $response as returned by {@link question_attempt_step::get_qt_data()}
+     * @return array a fraction between {@link get_min_fraction()}
+     * and {@link get_max_fraction()}, the corresponding {@link question_state} (right, partial or wrong)
+     * and, optionally, _error string or _mistakes {@link question_file_saver} containing created mistakes files.
+     * @throws coding_exception
      */
     public function grade_response(array $response) {
         $data = new stdClass();
-        $data->validation = false; // data->validation used to deteriorate
-        // validation run from the real one (used in comparator.php)
-        foreach (self::response_data() as $value) {
+        foreach (self::response_data($this->responseformat) as $value) {
             $data->$value = $this->$value;
         }
-        if (array_key_exists('validation', $response)) {
-            $data->validation = true;
-            if (isset($this->templatefiles_draftid))
-                $data->templatefiles_draftid = $this->templatefiles_draftid;
-        }
-        $comparator = new qtype_digitalliteracy_comparator();
-        $result = $comparator->grade_response($response, $data);
-        if (isset($result['error']))
-            return array(0, question_state::$invalid, array('_error' => $result['error']));
-        $fraction = $result['fraction'];
+        if (isset($this->templatefilesdraftid))
+            $data->templatefilesdraftid = $this->templatefilesdraftid;
+        $data->validation = isset($this->validation); // flag to identify a validation run
+
+        $result = (new qtype_digitalliteracy_sandbox($this->contextid))
+            ->grade_response($response, $data);
+        if (!empty($result['errors']))
+            return array(0, question_state::$invalid, array('_error' => $result['errors']));
+
+        $fraction = $result['fraction'] ?? 0;
         if ($this->binarygrading) {
             $fraction = $fraction < 1 ? 0 : 1;
         }
+
         return $data->validation || empty($result['file_saver']) ?
             array($fraction, question_state::graded_state_for_fraction($fraction)) :
             array($fraction, question_state::graded_state_for_fraction($fraction),
@@ -141,8 +144,8 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
     }
 
     /**
-     * Checks whether the users is allow to be served a particular file.
-     * @Overrides question_definition::check_file_access
+     * Checks whether the users is allowed to be served a particular file.
+     * @Overrides {@link question_definition::check_file_access}
      * @param $qa question_attempt the question attempt being displayed.
      * @param $options question_display_options the options that control display of the question.
      * @param $component string name of the component we are serving files for.
@@ -152,7 +155,7 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
      */
     public function check_file_access($qa, $options, $component, $filearea, $args, $forcedownload) {
         if ($component == 'question' && ($filearea == 'response_attachments' ||
-            $filearea == 'response_mistakes')) {
+                $filearea == 'response_mistakes')) {
             return true;
         } else {
             return parent::check_file_access($qa, $options, $component,
