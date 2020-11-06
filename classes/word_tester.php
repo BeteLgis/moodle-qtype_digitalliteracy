@@ -14,12 +14,16 @@ class qtype_digitalliteracy_word_tester extends qtype_digitalliteracy_base_teste
 
     public function validate_file($result) {
         $reader = IOFactory::createReader('Word2007');
+        if (!$reader->canRead($this->data->fullpath)) {
+            $result->add_error('shellerr_cantread', $this->data->filename);
+            return;
+        }
+
         $word = $reader->load($this->data->fullpath);
         if (count(word_text_criterions::get_text($word)) === 0) {
             $result->add_error('shellerr_emtyfile');
             return;
         }
-        return;
     }
 
     public function compare_files($result) {
@@ -193,7 +197,6 @@ class word_text_criterions {
                         break;
                     case 'PhpOffice\PhpWord\Element\TextRun':
                         foreach ($element->getElements() as $elm) {
-                            $text .= ' ';
                             switch (get_class($elm)) {
                                 case 'PhpOffice\PhpWord\Element\Title':
                                 case 'PhpOffice\PhpWord\Element\Text':
@@ -285,7 +288,6 @@ class word_text_criterions {
                         break;
                     case 'PhpOffice\PhpWord\Element\TextRun':
                         foreach ($element->getElements() as $elm) {
-                            $text .= ' ';
                             switch (get_class($elm)) {
                                 case 'PhpOffice\PhpWord\Element\Link':
                                     $text .= $elm->getText();
@@ -337,7 +339,6 @@ class word_text_criterions {
                         break;
                     case 'PhpOffice\PhpWord\Element\ListItemRun':
                         foreach ($element->getElements() as $elm) {
-                            $text .= ' ';
                             switch (get_class($elm)) {
                                 case 'PhpOffice\PhpWord\Element\Text':
                                     $text .= $elm->getText();
@@ -432,7 +433,6 @@ class word_text_criterions {
                             break;
                         case 'PhpOffice\PhpWord\Element\TextRun':
                             foreach ($element->getElements() as $elm) {
-                                $text .= ' ';
                                 switch (get_class($elm)) {
                                     case 'PhpOffice\PhpWord\Element\Text':
                                         $text .= $elm->getText();

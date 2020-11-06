@@ -30,7 +30,6 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_base_test
             $cell = $sheet->getCell($coordinate, false);
             $cell->getCalculatedValue(); // looking for infinite loops (like 'F:F' range)
         }
-        return;
     }
 
     public function compare_files($result) {

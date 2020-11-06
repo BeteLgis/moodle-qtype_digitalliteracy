@@ -57,7 +57,7 @@ class qtype_digitalliteracy_shell_result {
      */
     function write() {
         if (!file_put_contents($this->requestdir. self::RESULT_FILE, base64_encode(serialize($this->result)))) {
-            echo serialize(array('code' => 'shellex_resultwrite', 'a' => $this->requestdir));
+            echo serialize(array('code' => 'shellex_resultwrite'));
             exit(self::NOT_SAVED_ERROR);
         }
     }
@@ -72,11 +72,11 @@ class qtype_digitalliteracy_shell_result {
                 'shellex_prohibitedread'));
         if (!file_exists($this->requestdir. self::RESULT_FILE))
             return array(false, qtype_digitalliteracy_exception::conditional_throw(false,
-                'shellex_noresultfile', $this->requestdir));
+                'shellex_noresultfile'));
         if (!($content = file_get_contents($this->requestdir. self::RESULT_FILE)) ||
             !($decoded = base64_decode($content)) || !($res = unserialize($decoded)))
             return array(false, qtype_digitalliteracy_exception::conditional_throw(false,
-                'shellex_resultread', $this->requestdir. self::RESULT_FILE));
+                'shellex_resultread'));
         return array(true, $res);
     }
 }

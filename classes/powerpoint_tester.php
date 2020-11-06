@@ -6,43 +6,19 @@ use PhpOffice\PhpPresentation\Style\Color;
 use PhpOffice\PhpPresentation\Style\Alignment;
 
 
-class qtype_digitalliteracy_powerpoint_tester extends qtype_digitalliteracy_base_tester
-{
+class qtype_digitalliteracy_powerpoint_tester extends qtype_digitalliteracy_base_tester {
 
-    public function validate_file() {
-        //TODO
-        return '';
+    public function validate_file($result) {
+        $reader = IOFactory::createReader('PowerPoint2007');
+        if (!$reader->canRead($this->data->fullpath)) {
+            $result->add_error('shellerr_cantread', $this->data->filename);
+            return;
+        }
+        $result->add_error('Powerpoint is in development.');
     }
 
-    public function compare_files()
-    {
-        return array();
-        $samplePptx = IOFactory::load($data->response_path);
-        $analysPptx = IOFactory::load($data->source_path);
+    public function compare_files($result) {
 
-        $cmpSlides = $this->compareSlidesCount($samplePptx, $analysPptx);
-        $analysText = $this->testFontsText($samplePptx, $analysPptx);
-        $cmpShapes = $this->compareShapes($samplePptx, $analysPptx);
-        $cmpLayouts = $this->compareLayout($samplePptx, $analysPptx);
-        $scored = 0;
-        $max = 0;
-        if(system('python --version')){
-            system('python powerpoint_tester_shapes.py '.$source.' '.$sample, $scored);
-            system('python powerpoint_tester_shapes.py '.$source.' '.$sample, $max);
-        }
-        $scored += $cmpShapes[0] + $cmpSlides[0] + $analysText[0] + $cmpLayouts[0];
-        $max += $cmpShapes[1] + $cmpSlides[1] + $analysText[1] + $cmpLayouts[1];
-        if ($max == 0)
-            $max = 1;
-        $fraction = $scored/$max;
-        if ($data->flag)
-            return array('fraction' => $fraction);
-        $mistakes_name = 'Mistakes_' . $data->mistakes_name;
-        $mistakes_path = $data->request_directory . '\\' . $mistakes_name;
-        $writer = IOFactory::createWriter($samplePptx);
-        $writer->save($mistakes_path);
-        return array('file_saver' => qtype_digitalliteracy_sandbox::
-        generate_question_file_saver($mistakes_name, $mistakes_path), 'fraction' => $fraction);
     }
 
     /*
