@@ -1,245 +1,302 @@
 
 define(function() {
-    // source https://stackoverflow.com/questions/14227388/unserialize-php-array-in-javascript
-    const PHP = {
-        parse(str) {
-            let offset = 0;
-            const values = [null];
+    // Source https://stackoverflow.com/questions/14227388/unserialize-php-array-in-javascript
+    var PHP = {
+        parse: function parse(str) {
+            var offset = 0,
+                values = [null];
 
-            const kick = (msg, i = offset) => { throw new Error(`Error at ${i}: ${msg}\n${str}\n${" ".repeat(i)}^`) }
-            const read = (expected, ret) => expected === str.slice(offset, offset+=expected.length) ? ret
-                : kick(`Expected '${expected}'`, offset-expected.length);
+            var kick = function kick(msg, i) {
+                i = i || offset;
+                throw new Error("Error at " + i + ": " + msg + "\n" + str + "\n" + " ".repeat(i) + "^");
+            };
+            var read = function(expected, ret) {
+                // eslint-disable-next-line no-return-assign
+                return expected === str.slice(offset, offset += expected.length) ? ret :
+                    kick("Expected '" + expected + "'", offset - expected.length);
+            };
 
-            function readMatch(regex, msg, terminator=";") {
+            function readMatch(regex, msg, terminator) {
+                terminator = terminator || ";";
                 read(":");
-                const match = regex.exec(str.slice(offset));
-                if (!match) kick(`Exected ${msg}, but got '${str.slice(offset).match(/^[:;{}]|[^:;{}]*/)[0]}'`);
+                var match = regex.exec(str.slice(offset));
+                if (!match) {
+                    kick("Expected " + msg + ", but got '" + str.slice(offset).match(/^[:;{}]|[^:;{}]*/)[0] + "'");
+                }
                 offset += match[0].length;
                 return read(terminator, match[0]);
             }
 
-            function readUtf8chars(numUtf8Bytes, terminator="") {
-                const i = offset;
+            function readUtf8chars(numUtf8Bytes, terminator) {
+                terminator = terminator || "";
+                var i = offset;
                 while (numUtf8Bytes > 0) {
-                    const code = str.charCodeAt(offset++);
-                    numUtf8Bytes -= code < 0x80 ? 1 : code < 0x800 || code>>11 === 0x1B ? 2 : 3;
+                    var code = str.charCodeAt(offset++);
+                    // eslint-disable-next-line no-bitwise,no-nested-ternary
+                    numUtf8Bytes -= code < 0x80 ? 1 : code < 0x800 || code >> 11 === 0x1B ? 2 : 3;
                 }
-                return numUtf8Bytes ? kick("Invalid string length", i-2) : read(terminator, str.slice(i, offset));
+                return numUtf8Bytes ? kick("Invalid string length", i - 2) : read(terminator, str.slice(i, offset));
             }
 
-            const readUInt    = terminator => +readMatch(/^\d+/, "an unsigned integer", terminator);
-            const readString  = (terminator="") => readUtf8chars(readUInt(':"'), '"'+terminator);
+            var readUInt = function readUInt(terminator) {
+                return +readMatch(/^\d+/, "an unsigned integer", terminator);
+            };
+            var readString = function readString(terminator) {
+                terminator = terminator || "";
+                return readUtf8chars(readUInt(':"'), '"' + terminator);
+            };
 
             function readKey() {
-                const typ = str[offset++];
+                var typ = str[offset++];
+                // eslint-disable-next-line no-nested-ternary
                 return typ === "s" ? readString(";")
                     : typ === "i" ? readUInt(";")
-                        : kick("Expected 's' or 'i' as type for a key, but got ${str[offset-1]}", offset-1);
+                        : kick("Expected 's' or 'i' as type for a key, but got ${str[offset-1]}", offset - 1);
             }
 
             function readObject(obj) {
-                for (let i = 0, length = readUInt(":{"); i < length; i++) obj[readKey()] = readValue();
+                for (var i = 0, length = readUInt(":{"); i < length; i++) {
+                    obj[readKey()] = readValue();
+                }
                 return read("}", obj);
             }
 
             function readArray() {
-                const obj = readObject({});
-                return Object.keys(obj).some((key, i) => key !== i.toString()) ? obj : Object.values(obj);
+                var obj = readObject({});
+                return Object.keys(obj).some(function(key, i) {
+                    return key !== i.toString();
+                }) ? obj : Object.values(obj);
             }
 
             function readValue() {
-                const typ = str[offset++].toLowerCase();
-                const ref = values.push(null)-1;
-                const val = typ === "s" ? readString(";")
-                        : typ === "a" ? readArray()  // Associative array
-                            : kick(`Unexpected type ${typ}`, offset-1);
-                if (typ !== "r") values[ref] = val;
+                var typ = str[offset++].toLowerCase();
+                var ref = values.push(null) - 1;
+                // eslint-disable-next-line no-nested-ternary
+                var val = typ === "s" ? readString(";")
+                        : typ === "a" ? readArray() // Associative array
+                            : kick("Unexpected type " + typ, offset - 1);
+                if (typ !== "r") {
+                    values[ref] = val;
+                }
                 return val;
             }
 
-            const val = readValue();
-            if (offset !== str.length) kick("Unexpected trailing character");
+            var val = readValue();
+            if (offset !== str.length) {
+                kick("Unexpected trailing character");
+            }
             return val;
         }
-    }
+    };
+
+    var params = [],
+        groups = [],
+        fileTypesMatches = {},
+        fileTypeDefaults = {},
+        responseFormat = null,
+        fileTypeInput = null,
+        labels = {};
 
     function process(data) {
-        const params = data['params'];
-        const groups = data['groups'];
-        const types = data['types'];
-
-        const fileTypesMatches = types['matches'];
-        const fileTypeDefaults = types['defaults'];
-        const responseFormat = document.getElementById('id_responseformat');
-        const fileTypeInput = document.getElementById('id_filetypeslist');
-        fileTypeInput.setAttribute('readonly', 'true');
-
-        // parsing (and after removing) our container
-        const temp = document.getElementById('id_labels_container');
-        const serializedData = temp.getAttribute('data-serialized');
-        const labels = PHP.parse(serializedData);
-        temp.remove();
-        console.log(Object.keys(labels).length + ' labels were successfully parsed, container was removed');
-
-        for (const param of params) { // setting unique keys for params labels
-            const key = 'id_' + param;
-            const label = document.getElementById(key).parentElement;
-            textWrapper(label, key, 'id', '_label_span');
+        // quit if the form wasn't created (an exception was thrown)
+        if (!document.getElementById('id_responseformat')) {
+            return;
         }
 
-        for (const group of groups) { // setting unique keys for groups labels
-            const key = 'fgroup_id_' + group;
-            const label = document.querySelector('[for="' + key + '"]');
-            textWrapper(label, key, 'id', '_label_span');
+        params = data['params'];
+        groups = data['groups'];
+        fileTypesMatches = data['types']['matches'];
+        fileTypeDefaults = data['types']['defaults'];
+        responseFormat = document.getElementById('id_responseformat');
+        fileTypeInput = document.getElementById('id_filetypeslist');
+        fileTypeInput.setAttribute('readonly', 'true');
 
-            // setting unique keys for groups help buttons
-            const element = document.getElementById(key);
-            const help = element.children.item(0).children.item(0).children.item(0);
+        // Parsing (and after removing) our container
+        var temp = document.getElementById('id_labels_container');
+        var serializedData = temp.getAttribute('data-serialized');
+        labels = PHP.parse(serializedData);
+        temp.remove();
+        // eslint-disable-next-line no-console
+        console.log(Object.keys(labels).length + ' labels were successfully parsed, container was removed');
+
+        var i,
+            key,
+            labelContainer;
+        for (i = 0; i < params.length; i++) { // Setting unique keys for params labels
+            key = 'id_' + params[i];
+            labelContainer = document.getElementById(key).parentElement;
+            textWrapper(labelContainer, key + '_label_span', 'id');
+        }
+
+        for (i = 0; i < groups.length; i++) { // Setting unique keys for groups labels
+            key = 'fgroup_id_' + groups[i];
+            labelContainer = document.getElementById(key + '_label');
+            textWrapper(labelContainer, key + '_label_span', 'id');
+
+            // Setting unique keys for groups help buttons
+            var element = document.getElementById(key);
+            var help = element.children.item(0).children.item(0).children.item(0);
             help.id = key + '_help_text';
 
-            const hint = help.children.item(0);
+            var hint = help.children.item(0);
             hint.id = key + '_help_title';
         }
 
-        responseFormat.addEventListener('change', function () {
-            changeLabels();
+        responseFormat.addEventListener('change', function() {
+            changeLabels(false);
         });
         changeLabels(true);
+        spanChecker();
+    }
 
-        function textWrapper(label, name, key, postfix) { // put (wrap) label text into a span
-            label.normalize();
-            let text = "";
-            const textNode = Array.from(label.childNodes).find(function (node) {
-                if (node.nodeType === Node.TEXT_NODE) {
-                    text = typeof node.textContent == 'string' ? node.textContent : node.innerText;
-                    return text.trim() !== "";
-                }
-                return false;
-            });
-            if (!textNode) {
-                console.log('TextNode not found, label id ' + label.id);
-                return;
+    // Put (wrap) text nodes from the parent element (labelContainer) into a span.
+    // Concatenates data from all the text node into the first one!
+    function textWrapper(labelContainer, name, key) {
+        labelContainer.normalize();
+        var text = "";
+        var textNode = Array.from(labelContainer.childNodes).find(function(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                text = typeof node.textContent == 'string' ? node.textContent : node.innerText;
+                return text.trim() !== "";
             }
-            const spanNode = document.createElement('span');
-            spanNode.appendChild(document.createTextNode(text));
-            spanNode[key] = name + postfix;
-            label.replaceChild(spanNode, textNode);
+            return false;
+        });
+        if (!textNode) {
+            // eslint-disable-next-line no-console
+            console.log('TextNode not found, label id ' + labelContainer.id);
+            return;
         }
+        var spanNode = document.createElement('span');
+        spanNode.appendChild(document.createTextNode(text));
+        spanNode[key] = name;
+        labelContainer.replaceChild(spanNode, textNode);
+    }
 
-        function changeLabels(load = false) { // set new labels (depending on responseformat value)
-            const value = responseFormat.options[responseFormat.selectedIndex].value;
-            for (const param of params) {
-                const label = document.getElementById('id_' + param + '_label_span');
-                const element = document.getElementById('id_' + param);
-                hideOrUnhideAndRename(label, element, element.parentElement, labels[param + '_' + value]);
-                element.dispatchEvent(new CustomEvent('change'));
-            }
-            for (const group of groups) {
-                const label = document.getElementById('fgroup_id_' + group + '_label_span');
-                const element = document.getElementById('fgroup_id_' + group);
-                const newText = labels[group + '_' + value];
-                if (!hideOrUnhideAndRename(label, element, element, newText)) {
-                    const title = document.getElementById('fgroup_id_' + group + '_help_title');
-                    title.setAttribute('title', labels[group + '_help_title_' + value]);
-                    title.setAttribute('aria-label', labels[group + '_help_title_' + value]);
-
-                    const text = document.getElementById('fgroup_id_' + group + '_help_text');
-                    text.setAttribute('data-content', labels[group + '_help_text_' + value]);
-                }
-                const coef = document.getElementById('id_' + group + 'coef');
-                if (hideOrUnhideAndRename(null, coef, coef.parentElement.parentElement, newText)) {
-                    coef.value = 0;
-                }
-                coef.dispatchEvent(new CustomEvent('update'));
-            }
-            filetypes_description(load, value);
+    // Set new labels (depending on responseformat value)
+    function changeLabels(load) {
+        var i,
+            label,
+            element,
+            format = responseFormat.options[responseFormat.selectedIndex].value;
+        for (i = 0; i < params.length; i++) {
+            var param = params[i];
+            label = document.getElementById('id_' + param + '_label_span');
+            element = document.getElementById('id_' + param);
+            hideOrUnhideAndRename(label, element, element.parentElement, labels[param + '_' + format]);
+            element.dispatchEvent(new CustomEvent('change'));
         }
+        for (i = 0; i < groups.length; i++) {
+            var group = groups[i];
+            label = document.getElementById('fgroup_id_' + group + '_label_span');
+            element = document.getElementById('fgroup_id_' + group);
+            var newText = labels[group + '_' + format];
+            if (!hideOrUnhideAndRename(label, element, element, newText)) {
+                var title = document.getElementById('fgroup_id_' + group + '_help_title');
+                title.setAttribute('title', labels[group + '_help_title_' + format]);
+                title.setAttribute('aria-label', labels[group + '_help_title_' + format]);
 
-        function hideOrUnhideAndRename(label, element, container, newText) {
-            if (newText === undefined) {
-                element.hidden = true; // flag (needed in other js scripts)
-                container.style.display = 'none';
-            } else {
-                element.hidden = false;
-                container.style.display = '';
-                if (label) {
-                    label.replaceChild(document.createTextNode(newText), label.firstChild);
-                }
+                var text = document.getElementById('fgroup_id_' + group + '_help_text');
+                text.setAttribute('data-content', labels[group + '_help_text_' + format]);
             }
-            return element.hidden;
+            var coef = document.getElementById('id_' + group + 'coef');
+            if (hideOrUnhideAndRename(null, coef, coef.parentElement.parentElement, newText)) {
+                coef.value = 0;
+            }
+            coef.dispatchEvent(new CustomEvent('update'));
         }
+        filetypesDescription(format, load);
+    }
 
-        // changing filetypelist labels
-        function filetypes_description(load, value) {
-            if (!load) {
-                fileTypeInput.value = fileTypeDefaults[value]['value'];
-                const description = document.querySelector('[data-filetypesdescriptions="id_filetypeslist"]');
-                description.firstChild.innerHTML = labels['filetype_description'];
-                const descriptionSample = description.firstChild.firstChild.firstChild;
-                descriptionSample.firstChild.replaceChild(document.createTextNode(
-                    fileTypeDefaults[value]['description'] + ' '), descriptionSample.firstChild.firstChild);
-                descriptionSample.lastChild.replaceChild(document.createTextNode(fileTypeInput.value),
-                    descriptionSample.lastChild.firstChild);
+    function hideOrUnhideAndRename(label, element, container, newText) {
+        if (newText === undefined) {
+            element.hidden = true; // Flag (needed in other js scripts)
+            container.style.display = 'none';
+        } else {
+            element.hidden = false;
+            container.style.display = '';
+            if (label) {
+                label.replaceChild(document.createTextNode(newText), label.firstChild);
             }
         }
+        return element.hidden;
+    }
 
-        const bodyChecker = function () {
-            const body = document.querySelector('[data-filetypesbrowserbody="id_filetypeslist"]');
-            if (body === null || body.hasAttribute('data-used')) {
-                setTimeout(bodyChecker, 100); // File type browser body (Modal) is firstly
-                                                     // loaded when user click 'Choose' for the first time.
-                                                     // Here I wait for that moment
-            } else {
-                // body is always rerendered, that's why I use attribute to deteriorate the old from the new one
-                body.setAttribute('data-used', 'true');
-                const value = responseFormat.options[responseFormat.selectedIndex].value;
-                for (const child of body.children) { // leaving only type, which are acceptable now
-                    let option = '';
-                    if (child.getAttribute('data-filetypesbrowserkey') !== fileTypesMatches[value]) {
+    // Changing filetypelist labels
+    function filetypesDescription(format, load) {
+        if (!load) {
+            fileTypeInput.value = fileTypeDefaults[format].value;
+            var description = document.querySelector('[data-filetypesdescriptions="id_filetypeslist"]');
+            description.firstChild.innerHTML = labels['filetype_description'];
+            var descriptionSample = description.firstChild.firstChild.firstChild;
+            descriptionSample.firstChild.replaceChild(document.createTextNode(
+                fileTypeDefaults[format].description + ' '), descriptionSample.firstChild.firstChild);
+            descriptionSample.lastChild.replaceChild(document.createTextNode(fileTypeInput.value),
+                descriptionSample.lastChild.firstChild);
+        }
+    }
+
+    function bodyChecker() {
+        var body = document.querySelector('[data-filetypesbrowserbody="id_filetypeslist"]');
+        if (body === null || body.hasAttribute('data-used')) {
+            setTimeout(bodyChecker, 100); // File type browser body (Modal) is firstly
+            // loaded when user click 'Choose' for the first time.
+            // Here I wait for that moment
+        } else {
+            // Body is always rerendered, that's why I use attribute to deteriorate the old from the new one
+            body.setAttribute('data-used', 'true');
+            var format = responseFormat.options[responseFormat.selectedIndex].value;
+            for (var i = 0; i < body.children.length; i++) { // Leaving only type, which are acceptable now
+                // eslint-disable-next-line no-loop-func
+                (function() {
+                    var child = body.children[i];
+                    var option = '';
+                    if (child.getAttribute('data-filetypesbrowserkey') !== fileTypesMatches[format]) {
                         option = 'none';
                     } else {
-                        const browserkeys = child.querySelectorAll('input[data-filetypesbrowserkey]' +
+                        var browserkeys = child.querySelectorAll('input[data-filetypesbrowserkey]' +
                             '[type="checkbox"]');
-                        let count = fileTypeInput.value.toString();
+                        var count = fileTypeInput.value.toString();
                         count = count === "" ? 0 : count.replace(',',
                             ' ').split(' ').length;
-                        const checked = {count : count, last : null};
+                        var checked = {count: count, last: null};
                         disableLastKey(browserkeys, checked);
-                        for (const browserkey of browserkeys) {
-                            browserkey.addEventListener('change', function () {
-                                checked.count += browserkey.checked ? 1 : -1;
-                                disableLastKey(browserkeys, checked);
-                            });
+                        for (var j = 0; j < browserkeys.length; j++) {
+                            // eslint-disable-next-line no-loop-func
+                            (function() {
+                                var browserkey = browserkeys[j];
+                                browserkey.addEventListener('change', function() {
+                                    checked.count += browserkey.checked ? 1 : -1;
+                                    disableLastKey(browserkeys, checked);
+                                });
+                            }());
                         }
                     }
                     child.style.display = option;
-                }
+                }());
             }
         }
+    }
 
-        function disableLastKey(browserkeys, checked) {
-            if (checked.count === 1) {
-                checked.last = Array.from(browserkeys).find(function (el) {
-                    return el.checked;
-                });
-            }
-            if (checked.last) {
-                checked.last.disabled = checked.count === 1;
-            }
+    function disableLastKey(browserkeys, checked) {
+        if (checked.count === 1) {
+            checked.last = Array.from(browserkeys).find(function(el) {
+                return el.checked;
+            });
         }
+        if (checked.last) {
+            checked.last.disabled = checked.count === 1;
+        }
+    }
 
-        const spanChecker = function() {
-            const span = document.querySelector('[data-filetypesbrowser="id_filetypeslist"]');
-            if (span.childElementCount > 0) {
-                span.firstChild.addEventListener('click', function () {
-                    bodyChecker();
-                });
-            }
-            else { // button is loaded by yui [not instantly], so we wait
-                setTimeout(spanChecker, 100);
-            }
+    function spanChecker() {
+        var span = document.querySelector('[data-filetypesbrowser="id_filetypeslist"]');
+        if (span.childElementCount > 0) {
+            span.firstChild.addEventListener('click', function() {
+                bodyChecker();
+            });
+        } else { // Button is loaded by yui [not instantly], so we wait
+            setTimeout(spanChecker, 100);
         }
-        spanChecker();
     }
     return {process: process};
 });

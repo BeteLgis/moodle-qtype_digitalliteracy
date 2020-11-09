@@ -23,10 +23,9 @@ class PlotArea
     /**
      * Create a new PlotArea.
      *
-     * @param null|Layout $layout
      * @param DataSeries[] $plotSeries
      */
-    public function __construct(Layout $layout = null, array $plotSeries = [])
+    public function __construct(?Layout $layout = null, array $plotSeries = [])
     {
         $this->layout = $layout;
         $this->plotSeries = $plotSeries;
@@ -70,7 +69,7 @@ class PlotArea
     /**
      * Get Plot Series.
      *
-     * @return array of {@link DataSeries}
+     * @return array of DataSeries
      */
     public function getPlotGroup()
     {
@@ -103,7 +102,7 @@ class PlotArea
         return $this;
     }
 
-    public function refresh(Worksheet $worksheet)
+    public function refresh(Worksheet $worksheet): void
     {
         foreach ($this->plotSeries as $plotSeries) {
             $plotSeries->refresh($worksheet);
