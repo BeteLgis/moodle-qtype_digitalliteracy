@@ -121,17 +121,17 @@ define(function() {
 
         var i,
             key,
-            label;
+            labelContainer;
         for (i = 0; i < params.length; i++) { // Setting unique keys for params labels
             key = 'id_' + params[i];
-            label = document.getElementById(key).parentElement;
-            textWrapper(label, key + '_label_span', 'id');
+            labelContainer = document.getElementById(key).parentElement;
+            textWrapper(labelContainer, key + '_label_span', 'id');
         }
 
         for (i = 0; i < groups.length; i++) { // Setting unique keys for groups labels
             key = 'fgroup_id_' + groups[i];
-            label = document.querySelector('[for="' + key + '"]');
-            textWrapper(label, key + '_label_span', 'id');
+            labelContainer = document.getElementById(key + '_label');
+            textWrapper(labelContainer, key + '_label_span', 'id');
 
             // Setting unique keys for groups help buttons
             var element = document.getElementById(key);
@@ -149,11 +149,12 @@ define(function() {
         spanChecker();
     }
 
-    // Put (wrap) label text into a span
-    function textWrapper(label, name, key) {
-        label.normalize();
+    // Put (wrap) text nodes from the parent element (labelContainer) into a span.
+    // Concatenates data from all the text node into the first one!
+    function textWrapper(labelContainer, name, key) {
+        labelContainer.normalize();
         var text = "";
-        var textNode = Array.from(label.childNodes).find(function(node) {
+        var textNode = Array.from(labelContainer.childNodes).find(function(node) {
             if (node.nodeType === Node.TEXT_NODE) {
                 text = typeof node.textContent == 'string' ? node.textContent : node.innerText;
                 return text.trim() !== "";
@@ -162,13 +163,13 @@ define(function() {
         });
         if (!textNode) {
             // eslint-disable-next-line no-console
-            console.log('TextNode not found, label id ' + label.id);
+            console.log('TextNode not found, label id ' + labelContainer.id);
             return;
         }
         var spanNode = document.createElement('span');
         spanNode.appendChild(document.createTextNode(text));
         spanNode[key] = name;
-        label.replaceChild(spanNode, textNode);
+        labelContainer.replaceChild(spanNode, textNode);
     }
 
     // Set new labels (depending on responseformat value)
