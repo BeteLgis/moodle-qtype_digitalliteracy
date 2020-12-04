@@ -1,5 +1,5 @@
 # DIGITAL LITERACY
-Version 0.9.2 November 2020
+Version 0.9.3 December 2020
 
 Authors: Ainur Sharipov, Higher School of Economics, Russia
 # INSTALLATION
