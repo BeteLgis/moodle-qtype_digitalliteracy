@@ -95,7 +95,8 @@ define(function() {
         fileTypeDefaults = {},
         responseFormat = null,
         fileTypeInput = null,
-        labels = {};
+        labels = {},
+        version = 0;
 
     function process(data) {
         // quit if the form wasn't created (an exception was thrown)
@@ -103,6 +104,7 @@ define(function() {
             return;
         }
 
+        version = data['version'];
         params = data['params'];
         groups = data['groups'];
         fileTypesMatches = data['types']['matches'];
@@ -130,7 +132,9 @@ define(function() {
 
         for (i = 0; i < groups.length; i++) { // Setting unique keys for groups labels
             key = 'fgroup_id_' + groups[i];
-            labelContainer = document.getElementById(key + '_label');
+            labelContainer = version > 2020000000 ? // TODO find the exact version
+                document.getElementById(key + '_label') :
+                document.querySelector('[for="' + key + '"]');
             textWrapper(labelContainer, key + '_label_span', 'id');
 
             // Setting unique keys for groups help buttons

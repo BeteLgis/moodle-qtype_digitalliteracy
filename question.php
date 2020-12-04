@@ -11,6 +11,8 @@ require_once($CFG->dirroot . '/question/type/questionbase.php');
  */
 class qtype_digitalliteracy_question extends question_graded_automatically {
 
+    const component = 'qtype_digitalliteracy';
+
     public function make_behaviour(question_attempt $qa, $preferredbehaviour) {
         return new qbehaviour_interactive_for_digitalliteracy($qa, $preferredbehaviour);
     }
@@ -37,10 +39,10 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
                 foreach ($files as $file)
                     $file_list[] = $file->get_filename();
                 $result = implode(', ', $file_list);
-                return get_string('answered', 'qtype_digitalliteracy', $result);
+                return get_string('answered', self::component, $result);
             }
         }
-        return get_string('notanswered', 'qtype_digitalliteracy');
+        return get_string('notanswered', self::component);
     }
 
     public function is_complete_response(array $response) {
@@ -86,7 +88,7 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
             && $response['attachments'] instanceof question_response_files) {
             $files = $response['attachments']->get_files();
         } else
-            return get_string('notanswered', 'qtype_digitalliteracy');
+            return get_string('notanswered', self::component);
 
         return (new qtype_digitalliteracy_sandbox($this->contextid))
             ->validate_files($files, $this->responseformat,
@@ -99,14 +101,14 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
             return $error;
         } else {
             // error is stored in qt_data and will be displayed in the specific feedback
-            return get_string('unknownerror', 'qtype_digitalliteracy');
+            return get_string('unknownerror', self::component);
         }
     }
 
     /** The data passed to {@link qtype_digitalliteracy_base_tester::compare_files()} as a parameter. */
     public static function response_data($responseformat) {
         $settings = new qtype_digitalliteracy_settings($responseformat);
-        return array_merge(array('contextid', 'id','responseformat', 'hastemplatefile',
+        return array_merge(array('contextid', 'id','responseformat', 'showtemplatefile',
             'excludetemplate'), $settings->get_coefs(), $settings->get_params());
     }
 
@@ -116,7 +118,6 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
      * @return array a fraction between {@link get_min_fraction()}
      * and {@link get_max_fraction()}, the corresponding {@link question_state} (right, partial or wrong)
      * and, optionally, _error string or _mistakes {@link question_file_saver} containing created mistakes files.
-     * @throws coding_exception
      */
     public function grade_response(array $response) {
         $data = new stdClass();
@@ -126,6 +127,7 @@ class qtype_digitalliteracy_question extends question_graded_automatically {
         if (isset($this->templatefilesdraftid))
             $data->templatefilesdraftid = $this->templatefilesdraftid;
         $data->validation = isset($this->validation); // flag to identify a validation run
+        $data->fontparams = $this->fontparams;
 
         $result = (new qtype_digitalliteracy_sandbox($this->contextid))
             ->grade_response($response, $data);

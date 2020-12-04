@@ -1,10 +1,13 @@
 
 define(function() {
-    var errors = {};
-    var groupByCoef = {};
-    var paramsByGroup = {};
-    var coefValueByGroup = {}; // [groupname] => coef value (-1 means parse error)
-    var errorsContainer = {}; // [groupname] => [errorType] => string (errorType - 'coef' or 'param')
+    var errors = {}, // error messages (localized)
+        paramsByGroup = {},
+        paramsValuesByGroup = {}, // [groupname] => [index] => {'hidden', 'checked'} for each parameter
+        groupByCoef = {},
+        coefValueByGroup = {}, // [groupname] => coefficient value (-1 means parse error)
+        errorsContainer = {}, // [groupname] => [errorType] => string (errorType - 'coef' or 'params')
+        version = 0,
+        fontparams = null;
 
     function process(data) {
         // quit if the form wasn't created (an exception was thrown)
@@ -17,11 +20,20 @@ define(function() {
         errors = data['errors'];
         groupByCoef = data['coefs_map'];
         paramsByGroup = data['params_map'];
+        fontparams = document.getElementById('fitem_id_fontparams');
 
         for (coef in groupByCoef) {
             group = groupByCoef[coef];
             coefValueByGroup[group] = 0;
-            errorsContainer[group] = {'coef': '', 'param': ''};
+            errorsContainer[group] = {'coef': '', 'params': ''};
+        }
+
+        for (group in paramsByGroup) {
+            paramsValuesByGroup[group] = [];
+            // eslint-disable-next-line no-loop-func
+            paramsByGroup[group].forEach(function(param, index) {
+                paramsValuesByGroup[group][index] = {'hidden': false, 'checked': false};
+            });
         }
 
         for (coef in groupByCoef) { // Validate coefficients
@@ -39,12 +51,13 @@ define(function() {
         for (group in paramsByGroup) {
             // eslint-disable-next-line no-loop-func
             (function(grp) {
-                paramsByGroup[grp].forEach(function(param) {
-                    document.getElementById('id_' + param).addEventListener('change', function() {
-                        validateParams(grp, false);
+                paramsByGroup[grp].forEach(function(param, index) {
+                    var element = document.getElementById('id_' + param);
+                    element.addEventListener('change', function() {
+                        validateParam(element.hidden, element.checked, index, grp, false);
                     });
+                    validateParam(element.hidden, element.checked, index, grp, true);
                 });
-                validateParams(grp, true);
             })(group);
         }
     }
@@ -52,6 +65,7 @@ define(function() {
     function validateCoef(elementValue, group, load) {
         var res = isValid(elementValue);
         coefValueByGroup[group] = res;
+        toggleAutocompletes(group);
         errorsContainer[group].coef = res < 0 ? 'validatecoef' : '';
 
         var values = Object.values(coefValueByGroup);
@@ -73,14 +87,16 @@ define(function() {
         var message = [];
         var groupErrors = errorsContainer[group];
         for (var type in groupErrors) {
-            if (type === 'param' && coefValueByGroup[group] === 0) {
+            if (type === 'params' && coefValueByGroup[group] === 0) {
                 continue;
             }
             if (groupErrors[type].toString().length !== 0) {
                 message.push(errors[groupErrors[type]]);
             }
         }
-        var error = document.getElementById('fgroup_id_error_' + group);
+        var error = version > 2020000000 ? // TODO find the exact version
+            document.getElementById('fgroup_id_error_' + group) :
+            document.getElementById('id_error_' + group);
         var res = message.join(' | ');
         if (res.length === 0) {
             error.innerText = '';
@@ -102,23 +118,53 @@ define(function() {
     }
 
     // At least 1 param in each group should be chosen
-    function validateParams(group, load) {
-        var flag = false;
-        var groupParams = paramsByGroup[group];
-        var counter = 0; // Used to check if all group is hidden
-        for (var i = 0; i < groupParams.length; i++) {
-            var param = groupParams[i];
-            var element = document.getElementById('id_' + param);
-            if (element.hidden) {
-                counter++;
-            } else if (element.checked) {
-                flag = true;
-                break;
+    function validateParam(hidden, checked, index, group, load) {
+        paramsValuesByGroup[group][index].hidden = hidden;
+        paramsValuesByGroup[group][index].checked = checked;
+
+        var atLeastOneTicked = !hidden && checked;
+        if (!atLeastOneTicked) {
+            var counter = hidden ? 1 : 0; // Used to check if all group is hidden
+            var groupParams = paramsValuesByGroup[group];
+            for (var i = 0; !atLeastOneTicked && i < groupParams.length; i++) {
+                if (i === index) {
+                    continue;
+                }
+                var param = groupParams[i];
+                atLeastOneTicked = !param.hidden && param.checked;
+                if (param.hidden) {
+                    counter++;
+                }
+            }
+            if (!atLeastOneTicked) {
+                atLeastOneTicked = counter === groupParams.length;
             }
         }
-        errorsContainer[group].param = flag || counter === groupParams.length ? '' : 'tickacheckbox';
+
+        errorsContainer[group].params = atLeastOneTicked ? '' : 'tickacheckbox';
+        toggleAutocompletes(group);
+
         if (!load) {
             showOrHide(group);
+        }
+    }
+
+    function toggleAutocompletes(group) {
+        var visible = coefValueByGroup[group] > 0 && errorsContainer[group].params.length === 0;
+        switch (group) {
+            case 'group2':
+                toggleVisibility(fontparams, visible);
+                break;
+        }
+    }
+
+    function toggleVisibility(element, visible) {
+        if (visible) {
+            element.hidden = false;
+            element.style.display = '';
+        } else {
+            element.hidden = true;
+            element.style.display = 'none';
         }
     }
     return {process: process};

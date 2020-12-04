@@ -1,30 +1,72 @@
 <?php
+
+use PhpOffice\PhpPresentation as PP;
+use PhpOffice\PhpSpreadsheet as Excel;
+use PhpOffice\PhpWord as Word;
+
 /**
  * Parent class for the testers.
  */
-class qtype_digitalliteracy_base_tester {
+abstract class qtype_digitalliteracy_base_tester {
     protected $data;
+    protected $result;
+    protected $config;
 
     /**
      * @param stdClass $data as returned by {@link qtype_digitalliteracy_question::response_data()}
+     * @param qtype_digitalliteracy_shell_result $result
      * + shell needed fields
      */
-    function __construct($data) {
+    public function __construct($data, $result) {
         $this->data = $data;
+        $this->result = $result;
+        $this->config = new stdClass();
     }
 
     /**
      * Compares files and calculates the result (a fraction and the mistakes files).
      * Note that $data->templatepath is set only when the question has a template and it has to be excluded!
-     * @param qtype_digitalliteracy_shell_result $result
      */
-    public function compare_files($result) { }
+    abstract public function compare_files();
+
+    /** Validate a file. */
+    abstract public function validate_file();
+
+    /** @return string */
+    abstract protected function get_reader_from_extension($filename);
+
+    /** @return null|Excel\Reader\IReader|Word\Reader\ReaderInterface|PP\Reader\ReaderInterface */
+    abstract protected function IOFactory($reader);
+
+    protected function reader_apply_config($reader) { }
 
     /**
-     * Validate a file.
-     * @param qtype_digitalliteracy_shell_result $result
+     * Tries to read a file with a configured reader.
+     * @param string $filename
+     * @return null|Excel\Spreadsheet|Word\PhpWord|PP\PhpPresentation
      */
-    public function validate_file($result) { }
+    protected function read($filename) {
+        $readable = true;
+        if (!is_file($filename)) {
+            $this->result->add_error('shellerr_notfile');
+            $readable = false;
+        }
+        if (!is_readable($filename)) {
+            $this->result->add_error('shellerr_notreadable');
+            $readable = false;
+        }
+        if ($readable) {
+            $filetype = $this->get_reader_from_extension($filename);
+            if ($filetype) {
+                $reader = $this->IOFactory($filetype);
+                if (isset($reader) && $reader->canRead($filename)) {
+                    $this->reader_apply_config($reader);
+                    return $reader->load($filename);
+                }
+            }
+        }
+        return null;
+    }
 }
 
 /**
@@ -38,7 +80,7 @@ class qtype_digitalliteracy_base_tester {
  * For example, see {@link excel_cell_describer}.
  * For more detail, read comments on each of the mentioned methods.
  */
-class qtype_digitalliteracy_object_describer {
+abstract class qtype_digitalliteracy_object_describer {
 
     /**
      * Maps comparison settings (like grouponecoef and grouponeparamone | grouponeparamtwo)
@@ -51,9 +93,7 @@ class qtype_digitalliteracy_object_describer {
      * (if group is not present in the array then coef is 0!, same for the criterions [comparison params]:
      * criterion is only present when checkbox it represents is checked).
      */
-    function get_settings($data) {
-        return array();
-    }
+    abstract protected function get_settings($data);
 
     /**
      * Simply runs a criterion function in a try catch block.
@@ -63,9 +103,7 @@ class qtype_digitalliteracy_object_describer {
      * @return mixed empty array means value can't be calculated (for example, an exception occurred
      * or $object is not set).
      */
-    function wrapper($object, $function) {
-        return array();
-    }
+    abstract protected function wrapper($object, $function);
 
     /**
      * A description is an array of "key => function return value" pairs for each criterion.
@@ -73,7 +111,7 @@ class qtype_digitalliteracy_object_describer {
      * @param object $object Cell, Chart and so on
      * @return array
      */
-    function describe_by_group($criterions, $object) {
+    protected function describe_by_group($criterions, $object) {
         $description = array();
         foreach ($criterions as $key => $function) {
             $description[$key] = $this->wrapper($object, $function);
@@ -89,7 +127,7 @@ class qtype_digitalliteracy_object_describer {
      * @param null|array $log
      * @return float|int $match / $total ratio
      */
-    function compare_counter($object1_description, $object2_description, &$log = null) {
+    protected function compare_counter($object1_description, $object2_description, &$log = null) {
         $matches = 0;
         $total = 0;
         foreach ($object1_description as $name => $value) { // always set (look at description method)
@@ -110,21 +148,23 @@ class qtype_digitalliteracy_object_describer {
     /**
      * Recursive array difference count.
      */
-    function recursive_diff_count($array1, $array2, &$matches, &$total) {
+    protected function recursive_diff_count($array1, $array2, &$matches, &$total) {
         $flag = is_array($array1) && is_array($array2) && count($array2) > count($array1);
 
         if (is_array($array1) && count($array1) > 0 && !$flag) {
             foreach ($array1 as $key => $value) {
-                $this->recursive_diff_count($value, isset($array2[$key]) ? $array2[$key] : array(),
+                $this->recursive_diff_count($value, is_array($array2) &&
+                    array_key_exists($key, $array2) ? $array2[$key] : $array2,
                     $matches, $total);
             }
         } elseif ($flag || is_array($array2) && count($array2) > 0) {
             foreach ($array2 as $key => $value) {
-                $this->recursive_diff_count(isset($array1[$key]) ? $array1[$key] : array(), $value,
+                $this->recursive_diff_count(is_array($array1) &&
+                    array_key_exists($key, $array1) ? $array1[$key] : $array1, $value,
                     $matches, $total);
             }
         } else {
-            if ($array1 == $array2)
+            if ($array1 === $array2)
                 $matches++;
             $total++;
         }

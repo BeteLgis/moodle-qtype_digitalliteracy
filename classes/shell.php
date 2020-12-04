@@ -24,9 +24,7 @@ try {
 } catch (qtype_digitalliteracy_shell_exception $ex) {
     $shell->get_result()->add_exception($ex->getMessage(), $ex->a);
 } catch (Throwable $ex) {
-    $shell->get_result()->add_exception($ex->getMessage());
-} catch (Exception $ex) { // for backwards compatibility
-    $shell->get_result()->add_exception($ex->getMessage());
+    $shell->get_result()->add_exception($ex->getMessage(), $ex->getTraceAsString());
 }
 exit(qtype_digitalliteracy_shell_result::SUCCESS);
 
@@ -95,22 +93,22 @@ class qtype_digitalliteracy_shell {
     function run($data) {
         switch ($data->responseformat) {
             case 'excel':
-                $tester = new qtype_digitalliteracy_excel_tester($data);
+                $tester = new qtype_digitalliteracy_excel_tester($data, $this->result);
                 break;
             case 'powerpoint':
-                $tester = new qtype_digitalliteracy_powerpoint_tester($data);
+                $tester = new qtype_digitalliteracy_powerpoint_tester($data, $this->result);
                 break;
             case 'word':
-                $tester = new qtype_digitalliteracy_word_tester($data);
+                $tester = new qtype_digitalliteracy_word_tester($data, $this->result);
                 break;
         }
         if (!isset($tester)) // should never happen unless manual run (as data is validated!)
             throw new qtype_digitalliteracy_shell_exception('shellex_wrongresponseformat', $data->responseformat);
 
         if ($data->isgrading)
-            $tester->compare_files($this->result);
+            $tester->compare_files();
         else
-            $tester->validate_file($this->result);
+            $tester->validate_file();
     }
 
     /**

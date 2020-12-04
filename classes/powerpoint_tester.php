@@ -1,246 +1,186 @@
 <?php
-use PhpOffice\PhpPresentation\Style\Fill;
+
+use PhpOffice\PhpPresentation\Shape\RichText;
+use PhpOffice\PhpPresentation\Shape\Table;
 use PhpOffice\PhpPresentation\PhpPresentation;
 use PhpOffice\PhpPresentation\IOFactory;
-use PhpOffice\PhpPresentation\Style\Color;
-use PhpOffice\PhpPresentation\Style\Alignment;
-
+use PhpOffice\PhpPresentation\Writer\WriterInterface;
 
 class qtype_digitalliteracy_powerpoint_tester extends qtype_digitalliteracy_base_tester {
 
-    public function validate_file($result) {
-        $reader = IOFactory::createReader('PowerPoint2007');
-        if (!$reader->canRead($this->data->fullpath)) {
-            $result->add_error('shellerr_cantread', $this->data->filename);
+    protected function get_reader_from_extension($filename) {
+        switch (strtolower(pathinfo($filename, PATHINFO_EXTENSION))) {
+            case 'pptx':
+                return 'PowerPoint2007';
+            case 'ppt':
+                return 'PowerPoint97';
+            case 'odp':
+                return 'ODPresentation';
+            default:
+                return null;
+        }
+    }
+
+    protected function IOFactory($reader) {
+        return IOFactory::createReader($reader);
+    }
+
+    public function validate_file() {
+        $presentation = $this->read($this->data->fullpath);
+        if (!$presentation) {
+            $this->result->add_error('shellerr_cantread', $this->data->filename);
             return;
         }
-        $result->add_error('Powerpoint is in development.');
-    }
-
-    public function compare_files($result) {
-
-    }
-
-    /*
-   *function to get array of slides from pptx presentation
-   * @params: $pptx -- presentation
-   * @return -- array<int, Slides>, when each key of array is slide index
-   */
-    private function getSlidesArray($pptx){
-        $slides = array();
-        foreach($pptx->getAllSlides() as $slide){
-            array_push($slides, $slide);
+        if (count($presentation->getAllSlides()) === 0) {
+            $this->result->add_error('shellerr_zeroslides');
+            return;
         }
-        return $slides;
     }
 
-    /*
-     * Function to compare slide Layouts from pptx
-     * @params: $sample_pptx - sample presentation, with sample layouts
-     * $tested_pptx -- tested presentation, which compared with sample_pptx
+    public function compare_files() {
+        $ppSource = $this->read($this->data->sourcepath);
+        $ppResponse = $this->read($this->data->responsepath);
+        $ppTemplate = isset($this->data->templatepath) ?
+            $this->read($this->data->templatepath) : null;
+
+        $writer = IOFactory::createWriter($ppSource, 'PowerPoint2007');
+        list($fraction, $files) = $this->compare_with_coefficients($ppSource,
+            $ppResponse, $ppTemplate, $writer);
+
+        $this->result->set_fraction($fraction);
+        if ($this->data->validation)
+            return;
+
+        $this->result->set_files($files);
+        return;
+    }
+
+    /**
+     * @param PhpPresentation $ppSource
+     * @param PhpPresentation $ppResponse
+     * @param PhpPresentation $ppTemplate
+     * @param WriterInterface $writer
      */
-    private function compareLayout($sample_pptx, $tested_pptx){
-        $sample_slides = $this->getSlidesArray($sample_pptx);
-        $tested_slides = $this->getSlidesArray($tested_pptx);
-        $scored = 0;
-        $max = 0;
-        for ($i = 0; $i < min(count($sample_slides), count($tested_slides)); $i++){
-            $scored += $this->compareSlideLayouts($sample_slides[$i], $tested_slides[$i]);
-            $max++;
+    private function compare_with_coefficients($ppSource, $ppResponse, $ppTemplate, $writer) {
+        $result = array(); // contains a mark for each comparison group
+        $files = array(); // file name => path for each mistake file
+
+        $ppDescriber = new powerpoint_describer();
+        if (!empty($mistakes = $ppDescriber->compare_presentations($this->data, $result,
+            $ppSource, $ppResponse))) {
+            $name = 'Mistakes.txt';
+            $path = $this->data->requestdirectory . '/' . $name;
+            file_put_contents($path, implode(PHP_EOL, $mistakes), FILE_APPEND);
+            $files[$name] = $path;
         }
-        return array($scored, $max);
 
-    }
-
-    /*
-     * Function to get array of int in (min,max) format
-     * @params: $sample_pptx -- sample presentation
-     * $tested_pptx -- tested presentation
-     * @return -- array<int,int>, where first element is minimum count of slides, second element -- maximum
-     */
-    private function compareSlidesCount($sample_pptx , $tested_pptx){
-        return array(min(count($tested_pptx->getAllSlides()),count($sample_pptx->getAllSlides())),max(count($tested_pptx->getAllSlides()),count($sample_pptx->getAllSlides())));
-    }
-
-    //Получение текста с презентации
-    private function getText($PPTX){
-        $slidesArray = $PPTX->getAllSlides();
-        $result = '';
-        foreach ($slidesArray as $slide){
-            $result = $result . $this->getTextFromSlide($slide);
+        $res = array_sum($result);
+        if ($res != 1 && !$this->data->validation) {
+            $mistakesname = 'Mistakes_' . $this->data->mistakesname;
+            $mistakespath = $this->data->requestdirectory . '/' . $mistakesname;
+            $writer->save($mistakespath);
+            $files[$mistakesname] = $mistakespath;
         }
-        return $result;
+
+        // computing final mark
+        return array($res, $files);
+    }
+}
+
+class powerpoint_describer extends qtype_digitalliteracy_object_describer {
+
+    protected function get_settings($data) {
+        $res = array();
+        if ($data->group1coef) {
+            $items = array();
+            if ($data->group1param1)
+                $items['text'] = ['get_text'];
+            if ($data->group1param2)
+                $items['tables_text'] = ['get_tables_text'];
+            $res[] = array('group' => 'text', 'coef' => $data->group1coef,
+                'criterions' => $items);
+        }
+        return $res;
     }
 
-    /*
-     * Comparing text from original presentation and tested presentation
-     * @params $analysPptx -- Analys presentation
-     *
-     * @return percentage of comparing presentations text. When text is big it can work incorrectly
+    /**
+     * @param $data
+     * @param $result
+     * @param PhpPresentation $source
+     * @param PhpPresentation $response
+     * @param PhpPresentation $template
      */
-    private function compareText($sample_pptx, $tested_pptx){
-        $sampleText = $this->getText($sample_pptx);
-        $testText = $this->getText($tested_pptx);
-        $diff = levenshtein($sampleText, $testText);
-        return 1 - abs($diff/max(strlen($sampleText),strlen($testText)));
+    public function compare_presentations($data, &$result, $source, $response, $template = null) {
+        $settings = $this->get_settings($data);
+        $mistakeslog = array();
+        if (!empty($settings)) {
+            foreach ($settings as $setting) {
+                $criterions = $setting['criterions'];
+                $source_description = $this->describe_by_group($criterions, $source);
+                $response_description = $this->describe_by_group($criterions, $response);
+                $res = $this->compare_counter($source_description, $response_description, $mistakeslog);
+                $result[$setting['group']] = $setting['coef'] * $res / 100;
+            }
+        }
+        return $mistakeslog;
     }
 
-    /*
-     * Get all text from slide
-     * @params: $slide -- slide with text
-     * @return - all text from all RichText Shapes
-     */
-    private function getTextFromSlide($slide){
-        $res = "";
-        $shapes = $slide->getShapeCollection();
-        foreach($shapes as $shape){
-            if($shape instanceof PhpOffice\PhpPresentation\Shape\RichText){
-                $paragraphs = $shape->getParagraphs();
-                foreach($paragraphs as $paragraph){
-                    $res = $res . $paragraph->getPlainText();
+    /** @param PhpPresentation $presentation */
+    protected function wrapper($presentation, $function) {
+        if (!$presentation)
+            return array();
+        try {
+            return call_user_func(array(powerpoint_criterions::class,
+                array_shift($function)), $presentation, ...$function);
+        } catch (Exception $ex) {
+            return array();
+        }
+    }
+}
+
+class powerpoint_criterions {
+
+    /** @param PhpPresentation $presentation */
+    static function get_text($presentation) {
+        $text = '';
+        foreach ($presentation->getAllSlides() as $slide) {
+            foreach ($slide->getShapeCollection() as $shape) {
+                if ($shape instanceof RichText) {
+                    $text .= self::get_plain_text($shape);
                 }
             }
         }
-        return $res."\n";
+        return preg_split('/\s+/', $text, -1, PREG_SPLIT_NO_EMPTY);
     }
 
-    /*
-     * Comparing shapes without RichText shapes
-     * @params: $analysPptx -- analys presentation
-     *
-     * @return mark from 0 to 1 with comparing.
-     */
-    private function compareShapes($sample_pptx, $tested_pptx){
-        return array(min($this->countNotRichTextShapes($sample_pptx), $this->countNotRichTextShapes($tested_pptx)),max($this->countNotRichTextShapes($tested_pptx),$this->countNotRichTextShapes($sample_pptx)));
-    }
-
-    /*
-     * Counting Shapes from pptx presentation
-     * @params: $pptx -- presentation
-     * @return -- numbers of shapes in this presentation
-     */
-    private function countNotRichTextShapes($pptx){
-        $slides = $pptx->getAllSlides();
-        $cnt = 0;
-        foreach($slides as $slide){
-            foreach ($slide->getShapeCollection() as $shape){
-                if(!$shape instanceof PhpOffice\PhpPresentation\Shape\RichText){
-                    $cnt++;
+    /** @param RichText|Table\Cell $shape */
+    static function get_plain_text($shape) {
+        $text = '';
+        foreach ($shape->getParagraphs() as $paragraph) {
+            foreach ($paragraph->getRichTextElements() as $txt) {
+                $text .= ' ';
+                if ($txt instanceof RichText\TextElementInterface) {
+                    $text .= $txt->getText();
                 }
             }
         }
-        return $cnt;
+        return $text;
     }
 
-    /*
-     * Analyses text from all slides from testPptx with samplePptx
-     * @params: $testing -- testing pptx
-     * @return -- mark from 0 to 1
-     */
-    public function testFontsText($sample_pptx, $tested_pptx){
-        $smplSlides = $this->getSlidesArray($sample_pptx);
-        $tstSlides = $this->getSlidesArray($tested_pptx);
-        $max = 0;
-        $scored = 0;
-        for ($i = 0; $i < min(count($smplSlides),count($tstSlides)); $i++){
-            $temp = $this->analysTextFromSlide($smplSlides[$i], $tstSlides[$i]);
-            $scored += $temp[0];
-            $max += $temp[1];
-        }
-        return array($scored,$max);
-    }
-
-    /*
-     * Font analyse with 5 parametrs: Size, Bolt, Italic, Underline, Strikethrough
-     * @params $sampleSlide -- slide with perfect task
-     * @params $testSlide -- testing slide
-     * @return -- mark of analyse from 0 to 1
-     */
-    private function analysTextFromSlide($sampleSlide, $testSlide){
-        $sample_shapes = $sampleSlide->getShapeCollection();
-        $test_shapes = $testSlide->getShapeCollection();
-        $sample_rtb_elements = array();
-        $test_rtb_elements = array();
-
-        $max = 0;
-        $scored = 0;
-
-        foreach($sample_shapes as $shape){
-            $tmp = $this->getCollectionRichTextElements($shape);
-            foreach ($tmp as $elem)
-                array_push($sample_rtb_elements, $elem);
-        }
-        foreach($test_shapes as $shape){
-            $tmp = $this->getCollectionRichTextElements($shape);
-            foreach ($tmp as $elem)
-                array_push($test_rtb_elements, $elem);
-        }
-
-        for ($i = 0; $i < min(count($sample_rtb_elements),count($test_rtb_elements));$i++){
-            $sampleFont = $sample_rtb_elements[$i]->getFont();
-            $testFont = $test_rtb_elements[$i]->getFont();
-            if($sampleFont == null&& $testFont == null)
-                continue;
-            $max+=10;
-            if($sampleFont== null){
-                $scored+=10;
-                continue;
-            }
-            if($testFont == null){
-                continue;
-            }
-            $scored += 5 - 5*levenshtein($sample_rtb_elements[$i]->getText(),$test_rtb_elements[$i]->getText())/max(strlen($sample_rtb_elements[$i]->getText()),strlen($test_rtb_elements[$i]->getText()));
-            if($sampleFont->isItalic() == $testFont->isItalic())
-            {
-                $scored+=1;
-            }
-            if($sampleFont->getUnderline() == $testFont->getUnderline())
-            {
-                $scored+=1;
-            }
-            if($sampleFont->getSize() == $testFont->getSize()){
-                $scored += 1;
-            }
-            if($sampleFont->isBold() == $testFont->isBold()){
-                $scored+=1;
-            }
-            if($sampleFont->isStrikethrough() == $testFont->isStrikethrough()){
-                $scored+=1;
-            }
-        }
-        return array($scored,$max);
-    }
-
-    /*
-     * Getting all RichTextElements from RichTextShape
-     * @param: $shape -- @shape from presentation slide
-     * @return -- array of RichTextElements from this shape
-     */
-    private function getCollectionRichTextElements($shape){
-        $arrayElements = array();
-        if($shape instanceof PhpOffice\PhpPresentation\Shape\RichText){
-            $paragraphs = $shape->getParagraphs();
-            foreach($paragraphs as $paragraph){
-                foreach ($paragraph->getRichTextElements() as $richTextElement) {
-                    array_push($arrayElements, $richTextElement);
+    /** @param PhpPresentation $presentation */
+    static function get_tables_text($presentation) {
+        $text = '';
+        foreach ($presentation->getAllSlides() as $slide) {
+            foreach ($slide->getShapeCollection() as $shape) {
+                if ($shape instanceof Table) {
+                    foreach ($shape->getRows() as $row) {
+                        foreach ($row->getCells() as $cell) {
+                            $text .= self::get_plain_text($cell);
+                        }
+                    }
                 }
             }
         }
-        return $arrayElements;
-    }
-
-    /*
-     * compare two slides by slideLayouts
-     * @params $sample_slide - slide with sample slide layout
-     * $tested_slide - slide with tested slide layout
-     *
-     * @return - 0 or 1. It depends on same slide layouts or not
-     */
-    private function compareSlideLayouts($sample_slide, $tested_slide){
-        if($sample_slide == null || $tested_slide == null)
-            return 0;
-        if($sample_slide->getSlideLayout()->getLayoutName() == $tested_slide->getSlideLayout()->getLayoutName())
-            return 1;
-        return 0;
+        return preg_split('/\s+/', $text, -1, PREG_SPLIT_NO_EMPTY);
     }
 }

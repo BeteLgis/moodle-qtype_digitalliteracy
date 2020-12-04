@@ -11,6 +11,7 @@ require_once($CFG->dirroot.'/question/type/digitalliteracy/question.php');
  */
 class qtype_digitalliteracy_edit_form extends question_edit_form {
 
+    const component = 'qtype_digitalliteracy';
     /**
      * Add a digitalliteracy question type specific form fields.
      * Setting fields are declared in {@link qtype_digitalliteracy_settings}.
@@ -26,57 +27,69 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
 
         $responseformats = $qtype->response_formats();
         $mform->addElement('select', 'responseformat',
-            get_string('responseformat', 'qtype_digitalliteracy'), $responseformats);
+            get_string('responseformat', self::component), $responseformats);
         $mform->setDefault('responseformat', 'excel');
 
         $mform->addElement('header', 'responsefileoptions', get_string('responsefileoptions',
-            'qtype_digitalliteracy'));
+            self::component));
         $mform->setExpanded('responsefileoptions');
 
         $mform->addElement('select', 'attachmentsrequired',
-            get_string('attachmentsrequired', 'qtype_digitalliteracy'), $qtype->attachments_required_options());
+            get_string('attachmentsrequired', self::component), $qtype->attachments_required_options());
         $mform->setDefault('attachmentsrequired', 1);
-        $mform->addHelpButton('attachmentsrequired', 'attachmentsrequired', 'qtype_digitalliteracy');
+        $mform->addHelpButton('attachmentsrequired', 'attachmentsrequired', self::component);
 
         $mform->addElement('filetypes', 'filetypeslist', get_string('acceptedfiletypes',
-            'qtype_digitalliteracy'), $qtype->attachments_filetypes_option());
+            self::component), $qtype->attachments_filetypes_option());
         $mform->setDefault('filetypeslist', '.xlsx');
-        $mform->addHelpButton('filetypeslist', 'acceptedfiletypes', 'qtype_digitalliteracy');
-//        $mform->addRule('filetypeslist', get_string('emptyfiletypelist', 'qtype_digitalliteracy'),
+        $mform->addHelpButton('filetypeslist', 'acceptedfiletypes', self::component);
+//        $mform->addRule('filetypeslist', get_string('emptyfiletypelist', self::component),
 //            'required', null, 'client'); // Error here fixed in newer version of moodle
 
         $mform->addElement('filemanager', 'sourcefiles_filemanager', get_string('sourcefiles',
-            'qtype_digitalliteracy'), null, $options);
+            self::component), null, $options);
 
         $template_setting_group = array();
-        $template_setting_group[] = $mform->createElement('advcheckbox', 'hastemplatefile', get_string('hastemplatefile',
-            'qtype_digitalliteracy'));
-        $mform->setDefault('hastemplatefile', 0);
+        $template_setting_group[] = $mform->createElement('advcheckbox', 'showtemplatefile',
+            get_string('showtemplatefile', self::component));
+        $mform->setDefault('showtemplatefile', false);
 
-        $template_setting_group[] = $mform->createElement('advcheckbox', 'excludetemplate', get_string('excludetemplate',
-        'qtype_digitalliteracy'));
-        $mform->disabledIf('excludetemplate', 'hastemplatefile');
-        $mform->setDefault('excludetemplate', 0);
+        $template_setting_group[] = $mform->createElement('advcheckbox', 'excludetemplate',
+            get_string('excludetemplate', self::component));
+        $mform->setDefault('excludetemplate', true);
 
         $mform->addElement('group', 'templatesettings', get_string('templatesettings',
-            'qtype_digitalliteracy'), $template_setting_group, null, false);
-        $mform->addHelpButton('templatesettings', 'templatesettings', 'qtype_digitalliteracy');
+            self::component), $template_setting_group, null, false);
+        $mform->addHelpButton('templatesettings', 'templatesettings', self::component);
 
         $mform->addElement('filemanager', 'templatefiles_filemanager', get_string('templatefiles',
-            'qtype_digitalliteracy'), null, $options);
-        $mform->hideif('templatefiles_filemanager', 'hastemplatefile');
+            self::component), null, $options);
 
         $mform->addElement('header', 'responsegradingoptions', get_string('responsegradingoptions',
-            'qtype_digitalliteracy'));
+            self::component));
         $mform->setExpanded('responsegradingoptions');
 
-        foreach ($settings->get_groups() as $group) {
+        foreach ($settings->get_groups() as $index => $group) {
             $this->add_group($mform, $group);
+            if ($index === 1) {
+                $options = array(
+                    'multiple' => true,
+                    'noselectionstring' => get_string('allfontparams', self::component),
+                    'placeholder' => get_string('choosefontparams', self::component)
+                );
+                $params = array();
+                foreach ($qtype->fontparams() as $param) {
+                    $params[] = get_string($param, self::component);
+                }
+                $mform->addElement('autocomplete', 'fontparams', get_string('fontparams',
+                    self::component), $params, $options);
+            }
         }
+
         $this->add_group($mform, $settings->group_common(), true);
 
         $mform->setDefault($settings->get_coefs()[0], '100');
-        $mform->setDefault('binarygrading', 0);
+        $mform->setDefault('binarygrading', false);
 
         $this->responseformat_change_listeners($mform, $responseformats, $settings);
         $this->validation_listeners($settings);
@@ -97,20 +110,20 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         foreach ($items as $name => $type) {
             if (!$type) { // false == text
                 $content[] = $mform->createElement('text', $name, get_string('significance',
-                    'qtype_digitalliteracy'), array('size' => 1, 'maxlength' => 3));
+                    self::component), array('size' => 1, 'maxlength' => 3));
                 $mform->setType($name, PARAM_RAW);
                 $mform->setDefault($name, '0');
             } else { // true == advcheckbox
                 $identifier = $commom ? $name : 'paramplaceholder';
                 $content[] = $mform->createElement('advcheckbox', $name, get_string($identifier,
-                    'qtype_digitalliteracy'));
-                $mform->setDefault($name, 1);
+                    self::component));
+                $mform->setDefault($name, true);
             }
         }
         $identifier = $commom ? $groupname : 'groupplaceholder';
         $mform->addElement('group', $groupname, get_string($identifier,
-            'qtype_digitalliteracy'), $content, null, false);
-        $mform->addHelpButton($groupname, $identifier, 'qtype_digitalliteracy');
+            self::component), $content, null, false);
+        $mform->addHelpButton($groupname, $identifier, self::component);
     }
 
     /**
@@ -121,7 +134,7 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
      */
     private function responseformat_change_listeners(&$mform, $responseformats, $settings) {
         $labels = $this->createlabels($responseformats, clone $settings);
-        $labels['filetype_description'] = get_string('filetype_description', 'qtype_digitalliteracy');
+        $labels['filetype_description'] = get_string('filetype_description', self::component);
 
         // a little trick to avoid error "more than 1024 symbols were passed to an AMD JS script"
         $src = html_writer::tag('div', '', array('class' => 'data_container', 'id' =>
@@ -138,10 +151,10 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
                 'word' => ['value' => '.docx', 'description' =>
                     get_string('application/vnd.openxmlformats-officedocument.wordprocessingml.document','mimetypes')]]);
 
-        global $PAGE;
+        global $PAGE, $CFG;
         $params = $settings->get_params();
         $groups = $settings->get_groups_names();
-        $data = array('params' => $params, 'groups' => $groups, 'types' => $types);
+        $data = array('params' => $params, 'groups' => $groups, 'types' => $types, 'version' => (int)$CFG->version);
         $PAGE->requires->js_call_amd('qtype_digitalliteracy/labelchange', 'process',
             array($data));
         $coefs = $settings->get_coefs_ids();
@@ -164,13 +177,13 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
             $groups = $settings->get_groups_names();
             foreach ($params as $param) {
                 $key = $param. '_'. $responseformat;
-                $labels[$key] = get_string($key, 'qtype_digitalliteracy');
+                $labels[$key] = get_string($key, self::component);
             }
             foreach ($groups as $group) {
                 foreach (array('_help_title', '_help_text') as $item) {
                     $key = $group. $item. '_'. $responseformat;
-                    $value = get_string($key, 'qtype_digitalliteracy');
-                    $labels[$key] = get_string('pattern'. $item, 'qtype_digitalliteracy', $value);
+                    $value = get_string($key, self::component);
+                    $labels[$key] = get_string('pattern'. $item, self::component, $value);
                     if (strlen($item) === 11) // $item === '_help_title'
                         $labels[$group. '_'. $responseformat] = $value;
                 }
@@ -185,13 +198,13 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
      * @param $settings qtype_digitalliteracy_settings
      */
     private function validation_listeners($settings) {
-        $errors = array('validatecoef' => get_string('validatecoef', 'qtype_digitalliteracy'),
-            'notahundred' => get_string('notahundred', 'qtype_digitalliteracy'),
-            'tickacheckbox' => get_string('tickacheckbox', 'qtype_digitalliteracy'));
+        $errors = array('validatecoef' => get_string('validatecoef', self::component),
+            'notahundred' => get_string('notahundred', self::component),
+            'tickacheckbox' => get_string('tickacheckbox', self::component));
 
-        global $PAGE;
-        $data = array('coefs_map' => $settings->get_coefs_map(),
-            'params_map' => $settings->get_params_map(), 'errors' => $errors);
+        global $PAGE, $CFG;
+        $data = array('coefs_map' => $settings->get_coefs_map(), 'params_map' => $settings->get_params_map(),
+            'errors' => $errors, 'version' => (int)$CFG->version);
         $PAGE->requires->js_call_amd('qtype_digitalliteracy/validation', 'process',
             array($data));
     }
@@ -204,12 +217,11 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         }
         foreach (array('sourcefiles', 'templatefiles') as $filearea) {
             $draftitemid = 0;
-            file_prepare_draft_area($draftitemid, $question->contextid, 'qtype_digitalliteracy',
+            file_prepare_draft_area($draftitemid, $question->contextid, self::component,
                 $filearea, $question->id, array('subdirs' => false));
             $question->{$filearea . '_filemanager'} = $draftitemid;
         }
         $this->load_formdata_into_question($question, false);
-        // prepare files
         return $question;
     }
 
@@ -251,13 +263,13 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
 
         if (!in_array($fromform['responseformat'], array_flip($qtype->response_formats())))
             $errors['responseformat'] = get_string('elementchanged',
-                'qtype_digitalliteracy');
+                self::component);
         else
             $this->validatefiletypelist($qtype, $fromform,$errors);
 
         if (!in_array($fromform['attachmentsrequired'], $qtype->attachments_required_options()))
             $errors['attachmentsrequired'] = get_string('elementchanged',
-                'qtype_digitalliteracy');
+                self::component);
 
         return !empty($errors);
     }
@@ -270,12 +282,12 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
      */
     private function validatefiletypelist($qtype, $fromform, &$errors) {
         if ($fromform['filetypeslist'] === '') {
-            $errors['filetypeslist'] = get_string('emptyfiletypelist', 'qtype_digitalliteracy');
+            $errors['filetypeslist'] = get_string('emptyfiletypelist', self::component);
             return;
         }
         $accepted = call_user_func(array($qtype, $fromform['responseformat']. '_filetypes'));
         if (!empty($types = array_diff(explode(',', $fromform['filetypeslist']), $accepted))) {
-            $errors['filetypeslist'] = get_string('incorrectfiletypes', 'qtype_digitalliteracy',
+            $errors['filetypeslist'] = get_string('incorrectfiletypes', self::component,
                 implode(', ', $types));
         }
     }
@@ -300,12 +312,12 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
             $res = filter_var($fromform[$coef], FILTER_VALIDATE_INT, $options);
             $values[$group] = $res;
             if ($res < 0) {
-                $error_msg[$group][] = get_string('validatecoef', 'qtype_digitalliteracy');
+                $error_msg[$group][] = get_string('validatecoef', self::component);
             }
         }
         if (!in_array(-1, $values) && array_sum($values) != 100) { // validates sum
             foreach ($coefs_map as $group) {
-                $error_msg[$group][] = get_string('notahundred', 'qtype_digitalliteracy');
+                $error_msg[$group][] = get_string('notahundred', self::component);
             }
         }
         return $values;
@@ -329,7 +341,7 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
                     }
                 }
                 if (!$counter) { // concatenate error string for a group === $coefs[$key]
-                    $error_msg[$group][] = get_string('tickacheckbox', 'qtype_digitalliteracy');
+                    $error_msg[$group][] = get_string('tickacheckbox', self::component);
                 }
             }
         }
@@ -347,29 +359,28 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         $question->contextid = context_user::instance($USER->id)->id;
 
         $response = array('attachments' => new question_file_saver($fromform['sourcefiles_filemanager'],
-            'qtype_digitalliteracy', 'sourcefiles'));
+            self::component, 'sourcefiles'));
         $erroroccured = false;
         if (!empty($error = $question->validate_response($response))) {
             $errors['sourcefiles_filemanager'] = $error;
             $erroroccured = true;
         }
-        if ($question->hastemplatefile && !empty($error = $this->validate_files($fromform,
-                'templatefiles_filemanager'))) {
+        if ($question->excludetemplate && !empty($error = $this->validate_files($question->contextid,
+                $fromform, 'templatefiles_filemanager'))) {
             $errors['templatefiles_filemanager'] = $error;
             $erroroccured = true;
         }
         if ($erroroccured)
             return;
 
-        if ($question->hastemplatefile && $question->excludetemplate)
+        if ($question->excludetemplate)
             $question->templatefilesdraftid = $fromform['templatefiles_filemanager'];
 
         $question->validation = true;
         $result = $question->grade_response($response);
-        list($fraction, $state) = $result;
-        if ($fraction != 1.0) {
+        if ($result[0] != 1.0) {
             $errors['commonsettings'] = count($result) > 2 ? $result[2]['_error'] :
-                get_string('validationerror', 'qtype_digitalliteracy');
+                get_string('validationerror', self::component, $result[0]);
         }
     }
 
@@ -382,6 +393,7 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
      * @param bool $newquestion return new object or not
      */
     private function load_formdata_into_question(&$question, $newquestion) {
+        $qtype = new qtype_digitalliteracy();
         $extraquestionfields = (new qtype_digitalliteracy())->extra_question_fields();
         if (is_array($extraquestionfields)) {
             array_shift($extraquestionfields);
@@ -391,12 +403,14 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
                     $res->$field = $question[$field];
                 }
                 $res->filetypeslist = $question['filetypeslist'];
+                $res->fontparams = $qtype->get_bitmask_string($question['fontparams'], 6);
                 return $res;
             } else {
                 foreach ($extraquestionfields as $field) {
                     $question->$field = $question->options->$field;
                 }
                 $question->filetypeslist = $question->options->filetypeslist;
+                $question->fontparams = $qtype->unmask_bitmask($question->options->fontparams, 6);
             }
         }
         return '';
@@ -404,13 +418,14 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
 
     /**
      * Sends files for validation.
+     * @param int $contextid
      * @param array $fromform
      * @param string $element a filemanager element
      * @return string an error message or an empty string
      */
-    private function validate_files($fromform, $element) {
+    private function validate_files($contextid, $fromform, $element) {
         $fs = get_file_storage();
-        $files = $fs->get_area_files($this->context->id, 'user', 'draft',
+        $files = $fs->get_area_files($contextid, 'user', 'draft',
             $fromform[$element], 'filename', false);
 
         return (new qtype_digitalliteracy_sandbox($this->context->id))
