@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="question/type/digitalliteracy/db" VERSION="20200817" COMMENT="XMLDB file for Moodle question/type/digitalliteracy"
+<XMLDB PATH="question/type/digitalliteracy/db" VERSION="20201204" COMMENT="XMLDB file for Moodle question/type/digitalliteracy"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../../lib/xmldb/xmldb.xsd"
 >
@@ -11,30 +11,31 @@
         <FIELD NAME="responseformat" TYPE="char" LENGTH="16" NOTNULL="true" DEFAULT="excel" SEQUENCE="false" COMMENT="The type of answer (and response file type)."/>
         <FIELD NAME="attachmentsrequired" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="The number of attachments that should be required."/>
         <FIELD NAME="filetypeslist" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="What attachment file type a student is allowed to include with their response (empty means unlimited)."/>
-        <FIELD NAME="hastemplatefile" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Indicates if a question has a template file."/>
-        <FIELD NAME="grouponecoef" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="100" SEQUENCE="false" COMMENT="First coefficient (value)."/>
-        <FIELD NAME="grouptwocoef" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Second coefficient (format - style)."/>
-        <FIELD NAME="groupthreecoef" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Third coefficient (enclosures)."/>
-        <FIELD NAME="binarygrading" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Is question binary graded?"/>
+        <FIELD NAME="showtemplatefile" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Show template file or not."/>
+        <FIELD NAME="excludetemplate" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Exclude from graduation all data (text) provided in the template."/>
+        <FIELD NAME="binarygrading" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Is a question binary graded?"/>
         <FIELD NAME="showmistakes" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Whether to show the auto-grade result to the students or not."/>
         <FIELD NAME="checkbutton" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Show the check button or not."/>
-        <FIELD NAME="excludetemplate" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Exclude from graduation all data (text) provided in the template."/>
-        <FIELD NAME="grouponeparamone" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Param ."/>
-        <FIELD NAME="grouponeparamtwo" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Param ."/>
-        <FIELD NAME="grouponeparamthree" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Param ."/>
-        <FIELD NAME="grouponeparamfour" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Param ."/>
-        <FIELD NAME="grouptwoparamone" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Param ."/>
-        <FIELD NAME="grouptwoparamtwo" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Param ."/>
-        <FIELD NAME="grouptwoparamthree" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Param ."/>
-        <FIELD NAME="grouptwoparamfour" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Param ."/>
-        <FIELD NAME="groupthreeparamone" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Param ."/>
-        <FIELD NAME="groupthreeparamtwo" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Param ."/>
-        <FIELD NAME="groupthreeparamthree" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Param ."/>
-        <FIELD NAME="groupthreeparamfour" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Param ."/>
+        <FIELD NAME="fontparams" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="A bitmask of the font comparison params (name, size, bold, italic, underline, color)."/>
+        <FIELD NAME="group1coef" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="100" SEQUENCE="false" COMMENT="A group coefficient."/>
+        <FIELD NAME="group2coef" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="A group coefficient."/>
+        <FIELD NAME="group3coef" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="A group coefficient."/>
+        <FIELD NAME="group1param1" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="A param."/>
+        <FIELD NAME="group1param2" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="A param."/>
+        <FIELD NAME="group1param3" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="A param."/>
+        <FIELD NAME="group1param4" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="A param."/>
+        <FIELD NAME="group2param1" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="A param."/>
+        <FIELD NAME="group2param2" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="A param."/>
+        <FIELD NAME="group2param3" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="A param."/>
+        <FIELD NAME="group2param4" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="A param."/>
+        <FIELD NAME="group3param1" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="A param."/>
+        <FIELD NAME="group3param2" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="A param."/>
+        <FIELD NAME="group3param3" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="A param."/>
+        <FIELD NAME="group3param4" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="A param."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-        <KEY NAME="questionid" TYPE="foreign-unique" FIELDS="questionid" REFTABLE="question" REFFIELDS="id"/>
+        <KEY NAME="questionid" TYPE="unique" FIELDS="questionid"/>
       </KEYS>
     </TABLE>
   </TABLES>

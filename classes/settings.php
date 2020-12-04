@@ -14,7 +14,6 @@ class qtype_digitalliteracy_settings {
      * {@link qtype_digitalliteracy_settings_structures::$structures}).
      * @param string $responseformat empty string or a response format
      * from {@link qtype_digitalliteracy::response_formats()}
-     * @throws coding_exception see {@link qtype_digitalliteracy_settings_describer::describe_group()}
      */
     public function __construct($responseformat = '') {
         $this->structures = new qtype_digitalliteracy_settings_structures();
@@ -57,7 +56,6 @@ class qtype_digitalliteracy_settings {
      * and calls {@link qtype_digitalliteracy_settings::set_data()}.
      * @param string $responseformat empty string or a response format
      * from {@link qtype_digitalliteracy::response_formats()}
-     * @throws coding_exception see {@link qtype_digitalliteracy_settings_describer::describe_group()}
      */
     public function set_groups($responseformat = '') {
         $groups = array();
@@ -190,34 +188,25 @@ class qtype_digitalliteracy_settings_structures {
  * Class to describe a group.
  */
 class qtype_digitalliteracy_settings_describer {
-    private static $numbermapper = array(1 => 'one', 2 => 'two',
-        3 => 'three', 4 => 'four');
-
     /**
      * Describes a group - gives group a name and names its coefs and params.
      * Groups, coefs and params are autonamed in numerical order.
      *
      * For example: a structure array(2, 1) will look like:
-     * groupeone | grouponecoef | grouponecoefparamone, grouponecoefparamtwo
-     * groupetwo | grouptwocoef | grouptwocoefparamone
+     * group1 | group1coef | group1param1, group1param2
+     * group2 | group2coef | group2param1
      * @param int $groupindex index of a group from {@link qtype_digitalliteracy_settings::$groups} + 1
      * @param int $paramcount the number of params (a value from a structure array) in a group
      * @return array an array - a group description
-     * @throws coding_exception update numbermapper
      */
     public static function describe_group($groupindex, $paramcount) {
-        if ($groupindex <= 0 || $groupindex > count(self::$numbermapper) ||
-                $paramcount <= 0 || $paramcount > count(self::$numbermapper))
-            throw new coding_exception('Can\'t describe a group, check numbermapper in test_settings.php!');
-
         $result = array();
-        $groupnumber = self::$numbermapper[$groupindex];
         // A grading options group, there are only two element types:
         // 'text' [false] and 'advcheckbox' [true] <=> key - a unique name, value - the element type
-        $result['group'. $groupnumber. 'coef'] = false;
+        $result['group'. $groupindex. 'coef'] = false;
         for ($i = 1; $i <= $paramcount; $i++) {
-            $result['group'. $groupnumber. 'param'. self::$numbermapper[$i]] = true;
+            $result['group'. $groupindex. 'param'. $i] = true;
         }
-        return array('name' => 'group'. $groupnumber, 'items' => $result);
+        return array('name' => 'group'. $groupindex, 'items' => $result);
     }
 }

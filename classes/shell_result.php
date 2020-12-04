@@ -32,7 +32,7 @@ class qtype_digitalliteracy_shell_result {
     private function add_message($field, $errorcode, $a = null) {
         if (empty($errorcode) || !is_string($errorcode))
             return;
-        array_push($this->result[$field], array('code' => $errorcode, 'a' => $a));
+        $this->result[$field][] = array('code' => $errorcode, 'a' => $a);
     }
 
     function set_fraction($fraction) {

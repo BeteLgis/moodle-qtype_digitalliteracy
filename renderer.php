@@ -5,6 +5,7 @@ defined('MOODLE_INTERNAL') || die();
 /** Question attempts renderer (displayed to the student) */
 class qtype_digitalliteracy_renderer extends qtype_renderer {
 
+    const component = 'qtype_digitalliteracy';
     /**
      * Generate the display of the formulation part of the question.
      * This is the area that contains the question text, files
@@ -36,23 +37,23 @@ class qtype_digitalliteracy_renderer extends qtype_renderer {
 
         if (!empty($options->readonly) && $access) {
             $result .= html_writer::tag('h4', html_writer::tag('b',
-                get_string('sourcefiles_heading', 'qtype_digitalliteracy')));
+                get_string('sourcefiles_heading', self::component)));
             $result .= html_writer::tag('div', $this->get_files_from_filearea($qa, $question->contextid,
-                'qtype_digitalliteracy','sourcefiles', $question->id), array('class' => 'sourcefiles'));
+                self::component,'sourcefiles', $question->id), array('class' => 'sourcefiles'));
         }
 
-        if ($question->hastemplatefile) {
+        if ($question->showtemplatefile) {
             $result .= html_writer::tag('h4', html_writer::tag('b',
-                get_string('templatefiles_heading', 'qtype_digitalliteracy')));
+                get_string('templatefiles_heading', self::component)));
             $result .= html_writer::tag('div', $this->get_files_from_filearea($qa, $question->contextid,
-                'qtype_digitalliteracy','templatefiles', $question->id), array('class' => 'templatefiles'));
+                self::component,'templatefiles', $question->id), array('class' => 'templatefiles'));
         }
 
         $result .= html_writer::tag('h4', html_writer::tag('b',
-            get_string('answerfiles_heading', 'qtype_digitalliteracy')));
+            get_string('answerfiles_heading', self::component)));
 
         $result .= !empty($options->readonly) && $files == '' ?
-            html_writer::tag('div', get_string('notanswered', 'qtype_digitalliteracy')) :
+            html_writer::tag('div', get_string('notanswered', self::component)) :
             html_writer::tag('div', $files, array('class' => 'attachments'));
 
         if ($qa->get_state() == question_state::$invalid) {
@@ -65,9 +66,9 @@ class qtype_digitalliteracy_renderer extends qtype_renderer {
 
         if (!empty($options->readonly) && ($question->showmistakes || $access)) {
             $result .= html_writer::tag('h4', html_writer::tag('b',
-                get_string('mistakefiles_heading', 'qtype_digitalliteracy')));
+                get_string('mistakefiles_heading', self::component)));
             $result .= html_writer::tag('div', $mistakefiles !== '' ? $mistakefiles :
-                get_string('nomistakes', 'qtype_digitalliteracy'), array('class' => 'mistakefiles'));
+                get_string('nomistakes', self::component), array('class' => 'mistakefiles'));
         }
 
         $result .= html_writer::end_tag('div');
@@ -97,6 +98,8 @@ class qtype_digitalliteracy_renderer extends qtype_renderer {
      * @return string return a link to download each file from a the $files array
      */
     private function file_linker(question_attempt $qa, $files, $response) {
+        if (empty($files))
+            return get_string('nofiles', self::component);
         $output = array();
         foreach ($files as $file) {
             $output[] = html_writer::tag('p', html_writer::link(
@@ -156,7 +159,7 @@ class qtype_digitalliteracy_renderer extends qtype_renderer {
 
         $text = '';
         if (!empty($qa->get_question()->filetypeslist)) {
-            $text = html_writer::tag('p', get_string('acceptedfiletypes', 'qtype_digitalliteracy'));
+            $text = html_writer::tag('p', get_string('acceptedfiletypes', self::component));
             $filetypesutil = new \core_form\filetypes_util();
             $filetypes = $qa->get_question()->filetypeslist;
             $filetypedescriptions = $filetypesutil->describe_file_types($filetypes);

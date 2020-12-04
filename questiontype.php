@@ -7,6 +7,8 @@ require_once($CFG->libdir . '/questionlib.php');
 /** Class representing question type */
 class qtype_digitalliteracy extends question_type {
 
+    const component = 'qtype_digitalliteracy';
+
     public function can_analyse_responses() {
         return false;
     }
@@ -18,7 +20,7 @@ class qtype_digitalliteracy extends question_type {
     public function extra_question_fields() {
         return array_merge(array('qtype_digitalliteracy_option',
             'responseformat', 'attachmentsrequired',
-            'hastemplatefile', 'excludetemplate'),
+            'showtemplatefile', 'excludetemplate'),
             (new qtype_digitalliteracy_settings())->get_all_options());
     }
 
@@ -55,6 +57,8 @@ class qtype_digitalliteracy extends question_type {
             $options->filetypeslist = $formdata->filetypeslist;
         }
 
+        $options->fontparams = $this->get_bitmask_int($formdata->fontparams, 6);
+
         $DB->update_record('qtype_digitalliteracy_option', $options);
 
         if ($USER->id) {
@@ -62,10 +66,50 @@ class qtype_digitalliteracy extends question_type {
             foreach (array('sourcefiles', 'templatefiles') as $filearea) {
                 if (!empty($formdata->{$filearea. '_filemanager'})) {
                     file_save_draft_area_files($formdata->{$filearea. '_filemanager'}, $formdata->context->id,
-                        'qtype_digitalliteracy', $filearea, (int) $formdata->id, array('subdirs' => false));
+                        self::component, $filearea, (int) $formdata->id, array('subdirs' => false));
                 }
             }
         }
+    }
+
+    /**
+     * @param array|int $val
+     * @param int $size
+     * @return string representation
+     */
+    public function get_bitmask_string($val, $size) {
+        return strrev(sprintf( "%0". $size. "d", decbin(is_array($val) ?
+            $this->get_bitmask_int($val, $size) : $val))) ;
+    }
+
+    /**
+     * @param array $array
+     * @param int $size
+     * @return int representation
+     */
+    public function get_bitmask_int($array, $size) {
+        if (empty($array))
+            return (1 << $size) - 1;
+        $bitmask = 0;
+        foreach ($array as $elm) {
+            $bitmask |= (1 << $elm);
+        }
+        return $bitmask;
+    }
+
+    /**
+     * @param int $int_val bitmask representation
+     * @param int $size
+     * @return array of indexes
+     */
+    public function unmask_bitmask($int_val, $size) {
+        $res = array();
+        foreach (str_split($this->get_bitmask_string($int_val, $size)) as $index => $char) {
+            if ($char) {
+                $res[] = $index;
+            }
+        }
+        return $res;
     }
 
     public function save_question($question, $form) {
@@ -78,6 +122,7 @@ class qtype_digitalliteracy extends question_type {
         parent::initialise_question_instance($question, $questiondata);
         $filetypesutil = new \core_form\filetypes_util();
         $question->filetypeslist = $filetypesutil->normalize_file_types($questiondata->options->filetypeslist);
+        $question->fontparams = $this->get_bitmask_string($questiondata->options->fontparams, 6);
     }
 
     public function delete_question($questionid, $contextid) {
@@ -93,9 +138,9 @@ class qtype_digitalliteracy extends question_type {
      */
     public function response_formats() {
         return array(
-            'excel' => get_string('excel', 'qtype_digitalliteracy'),
-            'powerpoint' => get_string('powerpoint', 'qtype_digitalliteracy'),
-            'word' => get_string('word', 'qtype_digitalliteracy')
+            'excel' => get_string('excel', self::component),
+            //'powerpoint' => get_string('powerpoint', self::component),
+            'word' => get_string('word', self::component)
         );
     }
 
@@ -120,12 +165,16 @@ class qtype_digitalliteracy extends question_type {
         );
     }
 
+    public function fontparams() {
+        return array('fontname', 'fontsize', 'fontbold', 'fontitalic', 'fontunderline', 'fontcolor');
+    }
+
     public function excel_filetypes() {
-        return array('.ods', '.xlsx', '.xls', '.csv');
+        return array('.xlsx', '.xls', '.ods');
     }
 
     public function powerpoint_filetypes() {
-        return array('.pptx', '.odp');
+        return array('.pptx', '.ppt', '.odp');
     }
 
     public function word_filetypes() {
@@ -148,15 +197,15 @@ class qtype_digitalliteracy extends question_type {
         parent::move_files($questionid, $oldcontextid, $newcontextid);
         $fs = get_file_storage();
         $fs->move_area_files_to_new_context($oldcontextid,
-            $newcontextid, 'qtype_digitalliteracy', 'sourcefiles', $questionid);
+            $newcontextid, self::component, 'sourcefiles', $questionid);
         $fs->move_area_files_to_new_context($oldcontextid,
-            $newcontextid, 'qtype_digitalliteracy', 'templatefiles', $questionid);
+            $newcontextid, self::component, 'templatefiles', $questionid);
     }
 
     protected function delete_files($questionid, $contextid) {
         parent::delete_files($questionid, $contextid);
         $fs = get_file_storage();
-        $fs->delete_area_files($contextid, 'qtype_digitalliteracy', 'sourcefiles', $questionid);
-        $fs->delete_area_files($contextid, 'qtype_digitalliteracy', 'templatefiles', $questionid);
+        $fs->delete_area_files($contextid, self::component, 'sourcefiles', $questionid);
+        $fs->delete_area_files($contextid, self::component, 'templatefiles', $questionid);
     }
 }

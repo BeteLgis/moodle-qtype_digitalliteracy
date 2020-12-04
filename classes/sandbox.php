@@ -18,6 +18,7 @@ require_once($CFG->dirroot . '/question/type/digitalliteracy/vendor/autoload.php
 class qtype_digitalliteracy_sandbox {
     /** @var bool $isteacher the flag indicating user permissions (teacher or student) */
     private $isteacher = false;
+    const component = 'qtype_digitalliteracy';
 
     public function __construct($contextid) {
         $context = context::instance_by_id($contextid, MUST_EXIST);
@@ -34,6 +35,7 @@ class qtype_digitalliteracy_sandbox {
      * see {@link qtype_digitalliteracy_sandbox::validate_files()} and
      * {@link qtype_digitalliteracy_question::grade_response()}
      * @return array an array containing an error message or {@link question_file_saver} and a fraction
+     * @throws qtype_digitalliteracy_exception|moodle_exception [only for a teacher]
      */
     public function grade_response(array $response, &$data) {
         $dir = make_request_directory(true);
@@ -54,7 +56,7 @@ class qtype_digitalliteracy_sandbox {
      * @param bool $isgrading the flag to be passed to the shell
      * @return array array('error' => error message) or array('file_saver' => {@link question_file_saver},
      * 'fraction' => fraction [from 0 to 1 inclusively])
-     * @throws qtype_digitalliteracy_exception|moodle_exception an unexpected error
+     * @throws qtype_digitalliteracy_exception|moodle_exception [only for a teacher]
      */
     private function run_in_shell($data, $isgrading) {
         global $CFG;
@@ -64,7 +66,8 @@ class qtype_digitalliteracy_sandbox {
         $data->maxmemory = 20 * pow(2, 20); // 20 MB
         $path = $CFG->dirroot . '/question/type/digitalliteracy/classes/shell.php';
         if (!file_exists($path)) // shouldn't happen!
-            throw new qtype_digitalliteracy_exception($this->isteacher, 'exception_noshell');
+            return array('errors' => qtype_digitalliteracy_exception::conditional_throw
+                ($this->isteacher, 'exception_noshell'));
 
         exec("php $path ". base64_encode(serialize($data)), $output, $return_var);
 
@@ -75,7 +78,7 @@ class qtype_digitalliteracy_sandbox {
             if (!empty($output) && ($this->isteacher | $msg = @unserialize($output[0]))) {
                 return array('errors' => qtype_digitalliteracy_exception::conditional_throw
                     ($this->isteacher, empty($msg['code']) ? 'exception_shell' : $msg['code'],
-                    null, implode(PHP_EOL, $output), true));
+                    empty($msg['a']) ? null : $msg['a'], implode(PHP_EOL, $output), true));
             }
             return array('errors' => qtype_digitalliteracy_exception::conditional_throw($this->isteacher,
                 'exception_unknownshell', null, null, true));
@@ -89,27 +92,32 @@ class qtype_digitalliteracy_sandbox {
      */
     private function process_result($result, $isgrading) {
         if (!empty($result['exceptions'])) {
-            $msg = $this->numerate_strings($result['exceptions'], 'exception_unexpected');
+            list($msg, $debuginfo) = $this->format_messages($result['exceptions'], 'exception');
             return array('errors' => qtype_digitalliteracy_exception::conditional_throw
-                ($this->isteacher, $msg, null, null, true));
+                ($this->isteacher, $msg, null, empty($debuginfo) ? null : PHP_EOL. $debuginfo, true));
         }
         return $this->validate_result($result, $isgrading);
     }
 
-    private function numerate_strings($strings, $unexpected = 'exception_unexpected') {
-        $result = array();
-        $index = 0;
+    private function format_messages($messages, $type) {
+        $msg = array();
+        $debuginfo = array();
+        $divider = str_repeat('-', 20);
         $strmanager = get_string_manager();
-        foreach ($strings as $string) {
-            $code = $string['code'];
-            $a = !empty($string['a']) ? $string['a'] : null;
-            $message = strval($index + 1).'. '. ($strmanager->string_exists($code, 'qtype_digitalliteracy') ?
-                    get_string($code, 'qtype_digitalliteracy', $a) :
-                    get_string($unexpected, 'qtype_digitalliteracy', $code));
-            array_push($result, $message);
-            $index++;
+        foreach ($messages as $message) {
+            $code = $message['code'];
+            $a = empty($message['a']) ? null : $message['a'];
+
+            $exists = $strmanager->string_exists($code, self::component);
+            $msg[] = ($exists ? get_string($code, self::component, $a) :
+                    get_string($type. '_unexpected', self::component, $code));
+
+            if (!$exists && !empty($a) && is_string($a) && $type === 'exception') {
+                $debuginfo[] = $a;
+            }
         }
-        return implode(PHP_EOL, $result);
+        return array(implode(' | ', $msg),
+            implode(PHP_EOL. $divider. PHP_EOL, $debuginfo). PHP_EOL. $divider);
     }
 
     /**
@@ -120,36 +128,31 @@ class qtype_digitalliteracy_sandbox {
      */
     private function validate_result($result, $isgrading) {
         if (!is_array($result))
-            throw new qtype_digitalliteracy_exception($this->isteacher, 'exception_resultnotarray');
+            return array('errors' => qtype_digitalliteracy_exception::conditional_throw
+                ($this->isteacher, 'exception_resultnotarray'));
 
         // filter the keys
         $filteredresult = array();
         $key = 'errors';
         if (!empty($result[$key])) {
-            $msg = $this->numerate_strings($result[$key], 'error_unexpected');
+            $msg = $this->format_messages($result[$key], 'error')[0];
             $filteredresult[$key] = $msg;
+            return $filteredresult;
         }
 
-        // return array() or array('errors' => 'message')
+        // return array() or array('errors' => 'message') when validating a file
         if (!$isgrading)
             return $filteredresult;
 
         $key = 'fraction';
-        if (!empty($result[$key]) && is_numeric($result[$key])) {
-            $value = floatval($result[$key]);
-            if ($value >= 1)
-                $filteredresult[$key] = 1;
-            elseif ($value <= 0)
-                $filteredresult[$key] = 0;
-            else
-                $filteredresult[$key] = $value;
-        }
+        $filteredresult[$key] = $result[$key];
 
         if (empty($filteredresult))
-            throw new qtype_digitalliteracy_exception($this->isteacher, 'exception_emptyresultshell');
+            return array('errors' => qtype_digitalliteracy_exception::conditional_throw
+                ($this->isteacher, 'exception_emptyresultshell'));
 
         $key = 'files';
-        if (!empty($result[$key]) && is_array($result[$key]))
+        if (!empty($result[$key]))
             $filteredresult['file_saver'] = $this->generate_question_file_saver($result[$key]);
 
         return $filteredresult;
@@ -164,11 +167,11 @@ class qtype_digitalliteracy_sandbox {
      */
     private function copy_files_grading(&$data, array $response, $dir) {
         $source_files = $this->copy_area_files('source', $data->contextid,
-            'qtype_digitalliteracy', 'sourcefiles', $data->id, $dir);
+            self::component, 'sourcefiles', $data->id, $dir);
         $data->sourcepath = array_shift($source_files);
-        if ($data->hastemplatefile && $data->excludetemplate) {
+        if ($data->excludetemplate) {
             $template_files = $this->copy_area_files('template', $data->contextid,
-                'qtype_digitalliteracy', 'templatefiles', $data->id, $dir);
+                self::component, 'templatefiles', $data->id, $dir);
             $data->templatepath = array_shift($template_files);
         }
         $files = $response['attachments']->get_files();
@@ -292,15 +295,14 @@ class qtype_digitalliteracy_sandbox {
     private function validate_file($file, $data, $filetypesutil, $whitelist) {
         $filename = $file->get_filename();
         if (!$filetypesutil->is_allowed_file_type($filename, $whitelist))
-            return get_string('error_disallowedfiletype', 'qtype_digitalliteracy', $filename);
+            return get_string('error_disallowedfiletype', self::component, $filename);
 
         $fullpath = $data->requestdirectory.'/'. $filename;
         if (!$file->copy_content_to($fullpath))
-            return qtype_digitalliteracy_exception::conditional_throw($this->isteacher,
-                'exception_filecopy', $filename);
+            throw new qtype_digitalliteracy_exception('exception_filecopy', $filename);
 
         if (strlen($filename) < strlen(pathinfo($fullpath, PATHINFO_EXTENSION)) + 4)
-            return get_string('error_tooshortfilename', 'qtype_digitalliteracy', $filename);
+            return get_string('error_tooshortfilename', self::component, $filename);
 
         $data->fullpath = $fullpath;
         $data->filename = $filename;
@@ -313,7 +315,7 @@ class qtype_digitalliteracy_sandbox {
      * Verifies that the amount of files uploaded satisfy the required amount.
      * @param stored_file[] $files
      * @param string $responseformat
-     * @param array $filetypeslist
+     * @param string $filetypeslist
      * @param int $attachmentsrequired
      * @return string an error message or an empty string
      * @throws qtype_digitalliteracy_exception|coding_exception|moodle_exception
@@ -327,7 +329,7 @@ class qtype_digitalliteracy_sandbox {
         $attachcount = count($files);
         if ($attachcount != $attachmentsrequired) {
             return get_string('error_insufficientattachments',
-                'qtype_digitalliteracy', $attachmentsrequired);
+                self::component, $attachmentsrequired);
         }
 
         if ($attachcount > 0) { // designed to process more than 1 file (just in case)
@@ -337,7 +339,7 @@ class qtype_digitalliteracy_sandbox {
             foreach ($files as $file) {
                 $result[] = $this->validate_file($file, $data, $filetypesutil, $whitelist);
             }
-            return implode(PHP_EOL, $result);
+            return implode(' | ', $result);
         }
         return '';
     }
