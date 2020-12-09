@@ -42,29 +42,28 @@ abstract class qtype_digitalliteracy_base_tester {
 
     /**
      * Tries to read a file with a configured reader.
-     * @param string $filename
+     * @param string $filepath
      * @return null|Excel\Spreadsheet|Word\PhpWord|PP\PhpPresentation
      */
-    protected function read($filename) {
-        $readable = true;
-        if (!is_file($filename)) {
-            $this->result->add_error('shellerr_notfile');
-            $readable = false;
+    protected function read($filepath) {
+        $filename = pathinfo($filepath, PATHINFO_FILENAME);
+        if (!is_file($filepath)) {
+            $this->result->add_error('shellerr_notfile', $filename);
+            return null;
         }
-        if (!is_readable($filename)) {
-            $this->result->add_error('shellerr_notreadable');
-            $readable = false;
+        if (!is_readable($filepath)) {
+            $this->result->add_error('shellerr_notreadable', $filename);
+            return null;
         }
-        if ($readable) {
-            $filetype = $this->get_reader_from_extension($filename);
-            if ($filetype) {
-                $reader = $this->IOFactory($filetype);
-                if (isset($reader) && $reader->canRead($filename)) {
-                    $this->reader_apply_config($reader);
-                    return $reader->load($filename);
-                }
+        $filetype = $this->get_reader_from_extension($filepath);
+        if ($filetype) {
+            $reader = $this->IOFactory($filetype);
+            if (isset($reader) && $reader->canRead($filepath)) {
+                $this->reader_apply_config($reader);
+                return $reader->load($filepath);
             }
         }
+        $this->result->add_error('shellerr_cantread', $filename);
         return null;
     }
 }

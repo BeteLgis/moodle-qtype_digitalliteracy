@@ -114,16 +114,14 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
                 $mform->setType($name, PARAM_RAW);
                 $mform->setDefault($name, '0');
             } else { // true == advcheckbox
-                $identifier = $commom ? $name : 'paramplaceholder';
-                $content[] = $mform->createElement('advcheckbox', $name, get_string($identifier,
-                    self::component));
+                $content[] = $mform->createElement('advcheckbox', $name, $commom ?
+                    get_string($name, self::component) : $name);
                 $mform->setDefault($name, true);
             }
-        }
-        $identifier = $commom ? $groupname : 'groupplaceholder';
-        $mform->addElement('group', $groupname, get_string($identifier,
-            self::component), $content, null, false);
-        $mform->addHelpButton($groupname, $identifier, self::component);
+        };
+        $mform->addElement('group', $groupname, $commom ? get_string($groupname,
+            self::component) : $groupname, $content, null, false);
+//        $mform->addHelpButton($groupname, $identifier, self::component);
     }
 
     /**
@@ -151,10 +149,10 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
                 'word' => ['value' => '.docx', 'description' =>
                     get_string('application/vnd.openxmlformats-officedocument.wordprocessingml.document','mimetypes')]]);
 
-        global $PAGE, $CFG;
+        global $PAGE;
         $params = $settings->get_params();
-        $groups = $settings->get_groups_names();
-        $data = array('params' => $params, 'groups' => $groups, 'types' => $types, 'version' => (int)$CFG->version);
+        $groups = $settings->get_paramscount_map();
+        $data = array('params' => array_flip($params), 'groups' => $groups, 'types' => $types);
         $PAGE->requires->js_call_amd('qtype_digitalliteracy/labelchange', 'process',
             array($data));
         $coefs = $settings->get_coefs_ids();
@@ -180,13 +178,15 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
                 $labels[$key] = get_string($key, self::component);
             }
             foreach ($groups as $group) {
-                foreach (array('_help_title', '_help_text') as $item) {
-                    $key = $group. $item. '_'. $responseformat;
-                    $value = get_string($key, self::component);
-                    $labels[$key] = get_string('pattern'. $item, self::component, $value);
-                    if (strlen($item) === 11) // $item === '_help_title'
-                        $labels[$group. '_'. $responseformat] = $value;
-                }
+//                foreach (array('_help_title', '_help_text') as $item) {
+//                    $key = $group. $item. '_'. $responseformat;
+//                    $value = get_string($key, self::component);
+//                    $labels[$key] = get_string('pattern'. $item, self::component, $value);
+//                    if (strlen($item) === 11) // $item === '_help_title'
+//                        $labels[$group. '_'. $responseformat] = $value;
+//                }
+                $key = $group. '_'. $responseformat;
+                $labels[$key] = get_string($key, self::component);
             }
         }
         return $labels;
@@ -202,9 +202,9 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
             'notahundred' => get_string('notahundred', self::component),
             'tickacheckbox' => get_string('tickacheckbox', self::component));
 
-        global $PAGE, $CFG;
+        global $PAGE;
         $data = array('coefs_map' => $settings->get_coefs_map(), 'params_map' => $settings->get_params_map(),
-            'errors' => $errors, 'version' => (int)$CFG->version);
+            'errors' => $errors);
         $PAGE->requires->js_call_amd('qtype_digitalliteracy/validation', 'process',
             array($data));
     }

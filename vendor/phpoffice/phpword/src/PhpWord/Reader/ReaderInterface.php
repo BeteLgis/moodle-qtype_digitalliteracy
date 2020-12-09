@@ -36,7 +36,6 @@ interface ReaderInterface
      * Loads PhpWord from file
      *
      * @param string $filename
-     * @return \PhpOffice\PhpWord\PhpWord
      */
     public function load($filename);
 }

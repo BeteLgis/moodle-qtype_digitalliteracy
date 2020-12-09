@@ -25,11 +25,10 @@ class qtype_digitalliteracy_word_tester extends qtype_digitalliteracy_base_teste
     }
 
     public function validate_file() {
-        $word = $this->read($this->data->fullpath);
-        if (!$word) {
-            $this->result->add_error('shellerr_cantread', $this->data->filename);
+        $word = $this->read($this->data->filepath);
+        if (!$word)
             return;
-        }
+
         if (count(word_text_criterions::get_text($word)) === 0) {
             $this->result->add_error('shellerr_emtyfile');
             return;

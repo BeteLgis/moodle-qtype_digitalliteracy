@@ -8,8 +8,10 @@ $string['pluginnamesummary'] = 'Provides a platform for automatically gradable M
 // exception.php
 $string['exception_shell'] = 'Shell exception';
 
-// common
-$string['shellerr_cantread'] = 'Can\'t read file "{$a}".';
+// base_tester.php
+$string['shellerr_notfile'] = '"{$a}" is not a file.';
+$string['shellerr_notreadable'] = 'File "{$a}" doesn\'t have the read permission.';
+$string['shellerr_cantread'] = 'There is no appropriate reader for the file "{$a}".';
 
 // excel_tester.php
 $string['shellex_coordinate_394'] = 'Using all row (column) selection in formulas is prohibited.';
@@ -85,46 +87,46 @@ $string['group1param1_excel'] = 'Value';
 $string['group1param2_excel'] = 'Calculated value';
 $string['group1param3_excel'] = 'Visibility';
 $string['group1param4_excel'] = 'Merge range';
-$string['group1_help_title_excel'] = 'Compare text';
+$string['group1_excel'] = 'Compare text';
 $string['group1_help_text_excel'] = 'Compare text by selected options. Visibility means filter visibility (checks if a cell is hidden by the filter or not).';
 $string['group2param1_excel'] = 'Font';
 $string['group2param2_excel'] = 'Fill color';
 $string['group2param3_excel'] = 'Number format';
 $string['group2param4_excel'] = 'Alignment';
-$string['group2_help_title_excel'] = 'Compare style';
+$string['group2_excel'] = 'Compare style';
 $string['group2_help_text_excel'] = 'Compare style by selected options. Fill color compares start color (it matters when a gradient is used).';
 $string['group3param1_excel'] = 'Chart type';
 $string['group3param2_excel'] = 'Plot values';
 $string['group3param3_excel'] = 'Axis Y (legend)';
 $string['group3param4_excel'] = 'Axis X';
-$string['group3_help_title_excel'] = 'Compare charts';
+$string['group3_excel'] = 'Compare charts';
 $string['group3_help_text_excel'] = 'Compare charts by selected options. A chart type can be barChart, lineChart, pieChart etc. Plot values include all existing dimensions.';
 // word
 $string['group1param1_word'] = 'Text';
 $string['group1param2_word'] = 'Links';
 $string['group1param3_word'] = 'Lists';
 $string['group1param4_word'] = 'Tables';
-$string['group1_help_title_word'] = 'Compare text';
+$string['group1_word'] = 'Compare text';
 $string['group1_help_text_word'] = 'Compares text values for selected components.';
 $string['group2param1_word'] = 'Text';
 $string['group2param2_word'] = 'Links';
 $string['group2param3_word'] = 'Lists';
 $string['group2param4_word'] = 'Tables';
-$string['group2_help_title_word'] = 'Compare style';
+$string['group2_word'] = 'Compare style';
 $string['group2_help_text_word'] = 'Compares style (font - bold/italic/underline) for selected components. For lists, additionally, compares format type (bullet, number etc).';
 $string['group3param1_word'] = 'Orientation';
 $string['group3param2_word'] = 'Margins';
 $string['group3param3_word'] = 'Columns';
-$string['group3_help_title_word'] = 'Compare layout';
+$string['group3_word'] = 'Compare layout';
 $string['group3_help_text_word'] = 'Compare layout for each section by selected options. Margin - all 4 margins. Columns - column number and space.';
 // powerpoint
 $string['group1param1_powerpoint'] = 'Style';
 $string['group1param2_powerpoint'] = 'Text';
-$string['group1_help_title_powerpoint'] = 'Compare text';
+$string['group1_powerpoint'] = 'Compare text';
 $string['group1_help_text_powerpoint'] = 'Consider style and (or) text in comparison';
 $string['group2param1_powerpoint'] = 'Layouts';
 $string['group2param2_powerpoint'] = 'Pictures';
-$string['group2_help_title_powerpoint'] = 'Compare slide formatting';
+$string['group2_powerpoint'] = 'Compare slide formatting';
 $string['group2_help_text_powerpoint'] = 'Consider layouts and (or) pictures in comparison';
 // common
 $string['binarygrading'] = 'Binary grading';
