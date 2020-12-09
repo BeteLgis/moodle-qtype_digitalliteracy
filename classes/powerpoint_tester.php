@@ -26,11 +26,10 @@ class qtype_digitalliteracy_powerpoint_tester extends qtype_digitalliteracy_base
     }
 
     public function validate_file() {
-        $presentation = $this->read($this->data->fullpath);
-        if (!$presentation) {
-            $this->result->add_error('shellerr_cantread', $this->data->filename);
+        $presentation = $this->read($this->data->filepath);
+        if (!$presentation)
             return;
-        }
+
         if (count($presentation->getAllSlides()) === 0) {
             $this->result->add_error('shellerr_zeroslides');
             return;

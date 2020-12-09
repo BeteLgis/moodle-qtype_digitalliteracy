@@ -42,11 +42,10 @@ class qtype_digitalliteracy_excel_tester extends qtype_digitalliteracy_base_test
 
     public function validate_file() {
         $this->set_config(true);
-        $spreadsheet = $this->read($this->data->fullpath);
-        if (!$spreadsheet) {
-            $this->result->add_error('shellerr_cantread', $this->data->filename);
+        $spreadsheet = $this->read($this->data->filepath);
+        if (!$spreadsheet)
             return;
-        }
+
         Calculation::getInstance($spreadsheet)->disableCalculationCache();
         if (($count = $spreadsheet->getSheetCount()) !== 1) {
             $this->result->add_error('shellerr_sheetlimit');

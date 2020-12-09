@@ -241,9 +241,9 @@ class qtype_digitalliteracy_sandbox {
             $index++;
             $filename = core_text::strtolower(trim($file->get_filename()));
             $ext = substr($filename, strrpos($filename, '.') + 1);
-            $fullpath = $dir.'\\'.$name.'.'.$ext;
-            if ($file->copy_content_to($fullpath))
-                $result[$name. '_'. $index] = $fullpath;
+            $filepath = $dir.'\\'.$name.'.'.$ext;
+            if ($file->copy_content_to($filepath))
+                $result[$name. '_'. $index] = $filepath;
             else
                 throw new qtype_digitalliteracy_exception('exception_filecopy', $filename);
         }
@@ -297,14 +297,14 @@ class qtype_digitalliteracy_sandbox {
         if (!$filetypesutil->is_allowed_file_type($filename, $whitelist))
             return get_string('error_disallowedfiletype', self::component, $filename);
 
-        $fullpath = $data->requestdirectory.'/'. $filename;
-        if (!$file->copy_content_to($fullpath))
+        $filepath = $data->requestdirectory.'/'. $filename;
+        if (!$file->copy_content_to($filepath))
             throw new qtype_digitalliteracy_exception('exception_filecopy', $filename);
 
-        if (strlen($filename) < strlen(pathinfo($fullpath, PATHINFO_EXTENSION)) + 4)
+        if (strlen($filename) < strlen(pathinfo($filepath, PATHINFO_EXTENSION)) + 4)
             return get_string('error_tooshortfilename', self::component, $filename);
 
-        $data->fullpath = $fullpath;
+        $data->filepath = $filepath;
         $data->filename = $filename;
         $result = $this->run_in_shell($data, false);
         return !empty($result['errors']) ? $result['errors'] : '';

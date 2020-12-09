@@ -2,7 +2,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2020120100;
+$plugin->version   = 2020120900;
 $plugin->requires  = 2018050800;
 $plugin->cron = 0;
 $plugin->component = 'qtype_digitalliteracy';

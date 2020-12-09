@@ -105,6 +105,14 @@ class qtype_digitalliteracy_settings {
         return preg_replace('/^/', 'id_', $this->get_coefs());
     }
 
+    public function get_paramscount_map() {
+        $result = array();
+        foreach ($this->groups as $group) {
+            $result[$group['name']] = $group['paramscount'];
+        }
+        return $result;
+    }
+    
     /**
      * Maps params to groups (a group has at least one param).
      * @return array an array of group => [params] values (params is an array too)
@@ -196,17 +204,17 @@ class qtype_digitalliteracy_settings_describer {
      * group1 | group1coef | group1param1, group1param2
      * group2 | group2coef | group2param1
      * @param int $groupindex index of a group from {@link qtype_digitalliteracy_settings::$groups} + 1
-     * @param int $paramcount the number of params (a value from a structure array) in a group
+     * @param int $paramscount the number of params (a value from a structure array) in a group
      * @return array an array - a group description
      */
-    public static function describe_group($groupindex, $paramcount) {
+    public static function describe_group($groupindex, $paramscount) {
         $result = array();
         // A grading options group, there are only two element types:
         // 'text' [false] and 'advcheckbox' [true] <=> key - a unique name, value - the element type
         $result['group'. $groupindex. 'coef'] = false;
-        for ($i = 1; $i <= $paramcount; $i++) {
+        for ($i = 1; $i <= $paramscount; $i++) {
             $result['group'. $groupindex. 'param'. $i] = true;
         }
-        return array('name' => 'group'. $groupindex, 'items' => $result);
+        return array('name' => 'group'. $groupindex, 'items' => $result, 'paramscount' => $paramscount);
     }
 }

@@ -89,14 +89,13 @@ define(function() {
         }
     };
 
-    var params = [],
-        groups = [],
+    var params = {},
+        groups = {},
         fileTypesMatches = {},
         fileTypeDefaults = {},
         responseFormat = null,
         fileTypeInput = null,
-        labels = {},
-        version = 0;
+        labels = {};
 
     function process(data) {
         // quit if the form wasn't created (an exception was thrown)
@@ -104,7 +103,6 @@ define(function() {
             return;
         }
 
-        version = data['version'];
         params = data['params'];
         groups = data['groups'];
         fileTypesMatches = data['types']['matches'];
@@ -121,29 +119,11 @@ define(function() {
         // eslint-disable-next-line no-console
         console.log(Object.keys(labels).length + ' labels were successfully parsed, container was removed');
 
-        var i,
-            key,
-            labelContainer;
-        for (i = 0; i < params.length; i++) { // Setting unique keys for params labels
-            key = 'id_' + params[i];
-            labelContainer = document.getElementById(key).parentElement;
-            textWrapper(labelContainer, key + '_label_span', 'id');
-        }
-
-        for (i = 0; i < groups.length; i++) { // Setting unique keys for groups labels
-            key = 'fgroup_id_' + groups[i];
-            labelContainer = version > 2020000000 ? // TODO find the exact version
-                document.getElementById(key + '_label') :
-                document.querySelector('[for="' + key + '"]');
-            textWrapper(labelContainer, key + '_label_span', 'id');
-
-            // Setting unique keys for groups help buttons
-            var element = document.getElementById(key);
-            var help = element.children.item(0).children.item(0).children.item(0);
-            help.id = key + '_help_text';
-
-            var hint = help.children.item(0);
-            hint.id = key + '_help_title';
+        for (var group in groups) {
+            if (recursiveTextWrapper(document.getElementById('fgroup_id_' + group)) !== groups[group] + 1) {
+                // eslint-disable-next-line no-console
+                console.log('Group ' + group + ' was incorrectly labeled');
+            }
         }
 
         responseFormat.addEventListener('change', function() {
@@ -153,57 +133,54 @@ define(function() {
         spanChecker();
     }
 
-    // Put (wrap) text nodes from the parent element (labelContainer) into a span.
-    // Concatenates data from all the text node into the first one!
-    function textWrapper(labelContainer, name, key) {
-        labelContainer.normalize();
-        var text = "";
-        var textNode = Array.from(labelContainer.childNodes).find(function(node) {
-            if (node.nodeType === Node.TEXT_NODE) {
-                text = typeof node.textContent == 'string' ? node.textContent : node.innerText;
-                return text.trim() !== "";
+    function recursiveTextWrapper(element) {
+        var counter = 0;
+        for (var i = 0; i < element.childNodes.length; i++) {
+            var child = element.childNodes[i];
+            if (child.nodeType === Node.TEXT_NODE) {
+                var text = child.textContent.toString().trim();
+                if (text.length !== 0) {
+                    var spanNode = document.createElement('span');
+                    spanNode.appendChild(document.createTextNode(text));
+                    // eslint-disable-next-line no-nested-ternary
+                    spanNode.id = groups[text] !== undefined ? 'fgroup_id_' + text + '_label_span' :
+                        (params[text] !== undefined ? 'id_' + text + '_label_span' : '');
+                    if (spanNode.id.length !== 0) {
+                        element.replaceChild(spanNode, child);
+                        counter++;
+                    }
+                }
+            } else if (child.childNodes.length !== 0) {
+                counter += recursiveTextWrapper(child);
             }
-            return false;
-        });
-        if (!textNode) {
-            // eslint-disable-next-line no-console
-            console.log('TextNode not found, label id ' + labelContainer.id);
-            return;
+            // I don't interrupt if counter === maxCount for the test purposes!
         }
-        var spanNode = document.createElement('span');
-        spanNode.appendChild(document.createTextNode(text));
-        spanNode[key] = name;
-        labelContainer.replaceChild(spanNode, textNode);
+        return counter;
     }
 
     // Set new labels (depending on responseformat value)
     function changeLabels(load) {
-        var i,
-            label,
+        var label,
             element,
+            parent,
             format = responseFormat.options[responseFormat.selectedIndex].value;
-        for (i = 0; i < params.length; i++) {
-            var param = params[i];
+
+        for (var param in params) {
             label = document.getElementById('id_' + param + '_label_span');
             element = document.getElementById('id_' + param);
-            hideOrUnhideAndRename(label, element, element.parentElement, labels[param + '_' + format]);
+            parent = element.parentElement;
+            while (parent.attributes.length === 0) {
+                parent = parent.parentElement;
+            }
+            hideOrUnhideAndRename([element, parent], labels[param + '_' + format], label);
             element.dispatchEvent(new CustomEvent('change'));
         }
-        for (i = 0; i < groups.length; i++) {
-            var group = groups[i];
+
+        for (var group in groups) {
             label = document.getElementById('fgroup_id_' + group + '_label_span');
             element = document.getElementById('fgroup_id_' + group);
-            var newText = labels[group + '_' + format];
-            if (!hideOrUnhideAndRename(label, element, element, newText)) {
-                var title = document.getElementById('fgroup_id_' + group + '_help_title');
-                title.setAttribute('title', labels[group + '_help_title_' + format]);
-                title.setAttribute('aria-label', labels[group + '_help_title_' + format]);
-
-                var text = document.getElementById('fgroup_id_' + group + '_help_text');
-                text.setAttribute('data-content', labels[group + '_help_text_' + format]);
-            }
             var coef = document.getElementById('id_' + group + 'coef');
-            if (hideOrUnhideAndRename(null, coef, coef.parentElement.parentElement, newText)) {
+            if (hideOrUnhideAndRename([element, coef], labels[group + '_' + format], label)) {
                 coef.value = 0;
             }
             coef.dispatchEvent(new CustomEvent('update'));
@@ -211,18 +188,22 @@ define(function() {
         filetypesDescription(format, load);
     }
 
-    function hideOrUnhideAndRename(label, element, container, newText) {
+    function hideOrUnhideAndRename(elements, newText, label) {
         if (newText === undefined) {
-            element.hidden = true; // Flag (needed in other js scripts)
-            container.style.display = 'none';
+            elements.forEach(function(param) {
+                param.hidden = true; // Flag (needed in other js scripts)
+                param.style.display = 'none';
+            });
         } else {
-            element.hidden = false;
-            container.style.display = '';
+            elements.forEach(function(param) {
+                param.hidden = false;
+                param.style.display = '';
+            });
             if (label) {
                 label.replaceChild(document.createTextNode(newText), label.firstChild);
             }
         }
-        return element.hidden;
+        return newText === undefined;
     }
 
     // Changing filetypelist labels
@@ -230,6 +211,9 @@ define(function() {
         if (!load) {
             fileTypeInput.value = fileTypeDefaults[format].value;
             var description = document.querySelector('[data-filetypesdescriptions="id_filetypeslist"]');
+            if (!description) {
+                return;
+            }
             description.firstChild.innerHTML = labels['filetype_description'];
             var descriptionSample = description.firstChild.firstChild.firstChild;
             descriptionSample.firstChild.replaceChild(document.createTextNode(
@@ -294,6 +278,9 @@ define(function() {
 
     function spanChecker() {
         var span = document.querySelector('[data-filetypesbrowser="id_filetypeslist"]');
+        if (!span) {
+            return;
+        }
         if (span.childElementCount > 0) {
             span.firstChild.addEventListener('click', function() {
                 bodyChecker();

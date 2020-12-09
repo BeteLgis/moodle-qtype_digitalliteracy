@@ -6,12 +6,20 @@ define(function() {
         groupByCoef = {},
         coefValueByGroup = {}, // [groupname] => coefficient value (-1 means parse error)
         errorsContainer = {}, // [groupname] => [errorType] => string (errorType - 'coef' or 'params')
-        version = 0,
+        errorIdPrefix = '',
         fontparams = null;
 
     function process(data) {
         // quit if the form wasn't created (an exception was thrown)
         if (!document.getElementById('id_responseformat')) {
+            return;
+        }
+
+        if (document.getElementById('id_error_group1')) {
+            errorIdPrefix = 'id_error_';
+        } else if (document.getElementById('fgroup_id_error_group1')) {
+            errorIdPrefix = 'fgroup_id_error_';
+        } else {
             return;
         }
 
@@ -94,9 +102,7 @@ define(function() {
                 message.push(errors[groupErrors[type]]);
             }
         }
-        var error = version > 2020000000 ? // TODO find the exact version
-            document.getElementById('fgroup_id_error_' + group) :
-            document.getElementById('id_error_' + group);
+        var error = document.getElementById(errorIdPrefix + group);
         var res = message.join(' | ');
         if (res.length === 0) {
             error.innerText = '';
