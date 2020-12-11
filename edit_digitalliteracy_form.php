@@ -50,16 +50,16 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
             self::component), null, $options);
 
         $template_setting_group = array();
-        $template_setting_group[] = $mform->createElement('advcheckbox', 'showtemplatefile',
+        $template_setting_group[] = &$mform->createElement('advcheckbox', 'showtemplatefile',
             get_string('showtemplatefile', self::component));
         $mform->setDefault('showtemplatefile', false);
 
-        $template_setting_group[] = $mform->createElement('advcheckbox', 'excludetemplate',
+        $template_setting_group[] = &$mform->createElement('advcheckbox', 'excludetemplate',
             get_string('excludetemplate', self::component));
         $mform->setDefault('excludetemplate', true);
 
-        $mform->addElement('group', 'templatesettings', get_string('templatesettings',
-            self::component), $template_setting_group, null, false);
+        $mform->addGroup($template_setting_group, 'templatesettings', get_string('templatesettings',
+            self::component), null, false);
         $mform->addHelpButton('templatesettings', 'templatesettings', self::component);
 
         $mform->addElement('filemanager', 'templatefiles_filemanager', get_string('templatefiles',
@@ -109,18 +109,18 @@ class qtype_digitalliteracy_edit_form extends question_edit_form {
         $content = array();
         foreach ($items as $name => $type) {
             if (!$type) { // false == text
-                $content[] = $mform->createElement('text', $name, get_string('significance',
+                $content[] = &$mform->createElement('text', $name, get_string('significance',
                     self::component), array('size' => 1, 'maxlength' => 3));
                 $mform->setType($name, PARAM_RAW);
                 $mform->setDefault($name, '0');
             } else { // true == advcheckbox
-                $content[] = $mform->createElement('advcheckbox', $name, $commom ?
+                $content[] = &$mform->createElement('advcheckbox', $name, $commom ?
                     get_string($name, self::component) : $name);
                 $mform->setDefault($name, true);
             }
-        };
-        $mform->addElement('group', $groupname, $commom ? get_string($groupname,
-            self::component) : $groupname, $content, null, false);
+        }
+        $mform->addGroup($content, $groupname, $commom ? get_string($groupname,
+            self::component) : $groupname, null, false);
 //        $mform->addHelpButton($groupname, $identifier, self::component);
     }
 
