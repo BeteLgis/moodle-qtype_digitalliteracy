@@ -162,17 +162,12 @@ define(function() {
     function changeLabels(load) {
         var label,
             element,
-            parent,
             format = responseFormat.options[responseFormat.selectedIndex].value;
 
         for (var param in params) {
             label = document.getElementById('id_' + param + '_label_span');
             element = document.getElementById('id_' + param);
-            parent = element.parentElement;
-            while (parent.attributes.length === 0) {
-                parent = parent.parentElement;
-            }
-            hideOrUnhideAndRename([element, parent], labels[param + '_' + format], label);
+            hideOrUnhideAndRename([element, element.parentElement], labels[param + '_' + format], label);
             element.dispatchEvent(new CustomEvent('change'));
         }
 
